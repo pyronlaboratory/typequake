@@ -3,13 +3,20 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "bin": {
+    "typequake": "./dist/cli.js"
+  },
   "scripts": {
+    "start:dev": "bun run src/cli.ts",
+    "build": "bun run src/scripts/build.ts",
+    "bundle": "bun build src/cli.ts --outdir dist --target=node",
     "test": "vitest",
     "coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/bun": "latest",
+    "@types/node": "^25.5.0",
     "@vitest/coverage-v8": "4.1.1",
     "eslint": "^10.1.0",
     "globals": "^17.4.0",
@@ -19,5 +26,8 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "commander": "^14.0.3"
   }
 }
