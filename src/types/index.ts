@@ -6,6 +6,12 @@ export interface WorkspaceConfig {
   rootDir: string;
 }
 
+export interface WorkspaceAnalysis {
+  config: WorkspaceConfig;
+  packages: PackageNode[];
+  graph: DependencyGraph;
+}
+
 export interface PackageJson {
   name?: string;
   version?: string;

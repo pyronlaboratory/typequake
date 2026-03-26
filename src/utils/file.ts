@@ -26,7 +26,7 @@ export function parsePackageJson(packagePath: string): PackageNode | null {
     return null;
   }
 
-  if (!json.name) return null;
+  if (!json || !json.name) return null;
 
   const deps = {
     ...json.dependencies,
