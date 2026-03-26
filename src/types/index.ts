@@ -21,6 +21,8 @@ export interface PackageNode {
   dependencies: string[];
 }
 
+export type DependencyGraph = Map<string, string[]>;
+
 export type AnalyzeOptions = {
   json?: boolean;
   ci?: boolean;
