@@ -14,6 +14,13 @@ export interface PackageJson {
   devDependencies?: Record<string, string>;
 }
 
+export interface PackageNode {
+  name: string;
+  version: string;
+  path: string;
+  dependencies: string[];
+}
+
 export type AnalyzeOptions = {
   json?: boolean;
   ci?: boolean;
