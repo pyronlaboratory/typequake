@@ -227,6 +227,30 @@ describe("WorkspaceScanner — getTransitiveDependents()", () => {
       scanner.getTransitiveDependents("@acme/does-not-exist"),
     ).toThrow(/@acme\/does-not-exist/);
   });
+
+  it("handles circular dependencies without infinite loop", () => {
+    const rootDir = buildFixture({
+      "pnpm-workspace.yaml": "packages:\n  - packages/*\n",
+      "package.json": JSON.stringify({ name: "root", private: true }, null, 2),
+      // a → b → c → a
+      "packages/a/package.json": pkgJson("@acme/a", {
+        "@acme/c": "workspace:*",
+      }),
+      "packages/b/package.json": pkgJson("@acme/b", {
+        "@acme/a": "workspace:*",
+      }),
+      "packages/c/package.json": pkgJson("@acme/c", {
+        "@acme/b": "workspace:*",
+      }),
+    });
+    const scanner = new WorkspaceScanner(rootDir);
+    expect(() => scanner.getTransitiveDependents("@acme/a")).not.toThrow();
+    expect(scanner.getTransitiveDependents("@acme/a")).toEqual([
+      "@acme/b",
+      "@acme/c",
+    ]);
+    fs.rmSync(rootDir, { recursive: true, force: true });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -315,5 +339,108 @@ describe("WorkspaceScanner — invalid packages are skipped", () => {
     const { packages } = new WorkspaceScanner(rootDir).analyzeWorkspace();
     expect(packages.map((p) => p.name)).toEqual(["@acme/core"]);
     fs.rmSync(rootDir, { recursive: true, force: true });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// describe: on-disk fixtures (committed to tests/fixtures/)
+// ---------------------------------------------------------------------------
+
+const FIXTURES_DIR = path.resolve(__dirname, "../fixtures");
+
+describe("WorkspaceScanner — on-disk fixtures", () => {
+  it("pnpm-workspace: detects type and discovers all packages", () => {
+    const rootDir = path.join(FIXTURES_DIR, "pnpm-workspace");
+    const { config, packages } = new WorkspaceScanner(
+      rootDir,
+    ).analyzeWorkspace();
+
+    expect(config.type).toBe("pnpm");
+    expect(packages.map((p) => p.name).sort()).toEqual([
+      "@fixture/api",
+      "@fixture/core",
+      "@fixture/standalone",
+      "@fixture/utils",
+    ]);
+  });
+
+  it("pnpm-workspace: builds correct dependency graph", () => {
+    const rootDir = path.join(FIXTURES_DIR, "pnpm-workspace");
+    const { graph } = new WorkspaceScanner(rootDir).analyzeWorkspace();
+
+    expect(graph.get("@fixture/core")).toEqual([
+      "@fixture/api",
+      "@fixture/utils",
+    ]);
+    expect(graph.get("@fixture/utils")).toEqual(["@fixture/api"]);
+    expect(graph.get("@fixture/api")).toEqual([]);
+    expect(graph.get("@fixture/standalone")).toEqual([]);
+  });
+
+  it("pnpm-workspace: getTransitiveDependents() traverses correctly", () => {
+    const scanner = new WorkspaceScanner(
+      path.join(FIXTURES_DIR, "pnpm-workspace"),
+    );
+
+    expect(scanner.getTransitiveDependents("@fixture/core")).toEqual([
+      "@fixture/api",
+      "@fixture/utils",
+    ]);
+    expect(scanner.getTransitiveDependents("@fixture/utils")).toEqual([
+      "@fixture/api",
+    ]);
+    expect(scanner.getTransitiveDependents("@fixture/standalone")).toEqual([]);
+  });
+
+  it("yarn-workspace: detects type and discovers all packages", () => {
+    const rootDir = path.join(FIXTURES_DIR, "yarn-workspace");
+    const { config, packages } = new WorkspaceScanner(
+      rootDir,
+    ).analyzeWorkspace();
+
+    expect(config.type).toBe("yarn");
+    expect(packages.map((p) => p.name).sort()).toEqual([
+      "@fixture/api",
+      "@fixture/core",
+      "@fixture/standalone",
+      "@fixture/utils",
+    ]);
+  });
+
+  it("yarn-workspace: builds correct dependency graph", () => {
+    const rootDir = path.join(FIXTURES_DIR, "yarn-workspace");
+    const { graph } = new WorkspaceScanner(rootDir).analyzeWorkspace();
+
+    expect(graph.get("@fixture/core")).toEqual([
+      "@fixture/api",
+      "@fixture/utils",
+    ]);
+    expect(graph.get("@fixture/utils")).toEqual(["@fixture/api"]);
+  });
+
+  it("bun-workspace: detects type and discovers all packages", () => {
+    const rootDir = path.join(FIXTURES_DIR, "bun-workspace");
+    const { config, packages } = new WorkspaceScanner(
+      rootDir,
+    ).analyzeWorkspace();
+
+    expect(config.type).toBe("bun");
+    expect(packages.map((p) => p.name).sort()).toEqual([
+      "@fixture/api",
+      "@fixture/core",
+      "@fixture/standalone",
+      "@fixture/utils",
+    ]);
+  });
+
+  it("bun-workspace: builds correct dependency graph", () => {
+    const rootDir = path.join(FIXTURES_DIR, "bun-workspace");
+    const { graph } = new WorkspaceScanner(rootDir).analyzeWorkspace();
+
+    expect(graph.get("@fixture/core")).toEqual([
+      "@fixture/api",
+      "@fixture/utils",
+    ]);
+    expect(graph.get("@fixture/utils")).toEqual(["@fixture/api"]);
   });
 });
