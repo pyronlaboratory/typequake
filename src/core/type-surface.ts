@@ -10,6 +10,8 @@ import type {
 } from "../types/index.js";
 import { readCache, writeCache } from "../utils/cache.ts";
 
+const programCache = new Map<string, ts.Program>();
+
 /**
  * Ordered list of package.json fields to inspect when locating the TypeScript
  * entry point of a package.  We prefer explicit type declarations over the
@@ -212,10 +214,7 @@ function serializeSymbol(
   };
 }
 
-const programCache = new Map<string, ts.Program>();
-
 function getProgram(entryPoint: string, options: ts.CompilerOptions) {
-  // const key = entryPoint + JSON.stringify(options);
   const key = entryPoint;
 
   let program = programCache.get(key);
@@ -265,7 +264,6 @@ export class TypeSurfaceExtractor {
     }
 
     const compilerOptions = loadCompilerOptions(packagePath);
-    // const program = ts.createProgram([entryPoint], compilerOptions);
     const program = getProgram(entryPoint, compilerOptions);
     const checker = program.getTypeChecker();
 
@@ -309,7 +307,7 @@ export class TypeSurfaceExtractor {
   }
 }
 
-// script-mode fallback
+// ── script-mode fallback ——————————————————————————————————————————————————————
 
 // istanbul ignore next
 function isExportedStatement(node: ts.Statement): boolean {

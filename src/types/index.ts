@@ -71,3 +71,20 @@ export interface TypeSignature {
   callSignatures?: string[];
   isExported: boolean;
 }
+
+// ── Mutation Records ───────────────────────────────────────────────────────
+
+export type TypeMutationClass =
+  | "BREAKING"
+  | "NARROWING"
+  | "WIDENING"
+  | "ADDITIVE"
+  | "REMOVED";
+
+export interface MutationRecord {
+  symbolName: string;
+  mutationClass: TypeMutationClass;
+  before: TypeSignature | null;
+  after: TypeSignature | null;
+  detail: string;
+}
