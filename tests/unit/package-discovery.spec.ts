@@ -4,7 +4,10 @@ import { describe, it, expect } from "vitest";
 import { discoverPackages } from "../../src/core/package-discovery";
 import type { WorkspaceConfig } from "../../src/types";
 
-const fixtureRoot = path.resolve(__dirname, "../fixtures/pnpm-workspace");
+const fixtureRoot = path.resolve(
+  __dirname,
+  "../fixtures/workspaces/pnpm-workspace",
+);
 
 describe("discoverPackages", () => {
   const config: WorkspaceConfig = {
