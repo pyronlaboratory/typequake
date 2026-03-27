@@ -1,0 +1,7 @@
+{
+  "name": "yarn-fixture-root",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ]
+}
