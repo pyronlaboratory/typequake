@@ -346,7 +346,7 @@ describe("WorkspaceScanner — invalid packages are skipped", () => {
 // describe: on-disk fixtures (committed to tests/fixtures/)
 // ---------------------------------------------------------------------------
 
-const FIXTURES_DIR = path.resolve(__dirname, "../fixtures");
+const FIXTURES_DIR = path.resolve(__dirname, "../fixtures/workspaces");
 
 describe("WorkspaceScanner — on-disk fixtures", () => {
   it("pnpm-workspace: detects type and discovers all packages", () => {
