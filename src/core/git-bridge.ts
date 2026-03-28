@@ -2,9 +2,15 @@ import path from "path";
 import os from "os";
 import fs from "fs";
 import { execSync } from "child_process";
-import type { PackageNode, SignatureMap } from "../types/index";
+import type {
+  MutationRecord,
+  PackageDiffResult,
+  PackageNode,
+  SignatureMap,
+} from "../types/index";
 import { WorkspaceScanner } from "./workspace-scanner";
 import { TypeSurfaceExtractor } from "./type-surface";
+import { diff as diffSignatures } from "./semantic-differ.js";
 
 function runGit(args: string, cwd: string): string {
   try {
@@ -210,5 +216,70 @@ export class GitBridge {
     } finally {
       cleanup();
     }
+  }
+
+  /**
+   * Diff a single workspace package between `baseRef` and the current
+   * working tree, handling the three edge cases cleanly:
+   *
+   *  - "added"   → package exists only in current tree (no before snapshot)
+   *  - "deleted" → package exists only at baseRef (no after on disk)
+   *  - "changed" → package exists on both sides; runs semantic diff
+   *
+   * Never throws for edge cases — returns a typed result instead.
+   */
+  diffPackage(baseRef: string, pkgPath: string): PackageDiffResult {
+    const { packages } = this.scanner.analyzeWorkspace();
+
+    const pkgNode = packages.find((p) => p.path === pkgPath);
+    const packageName = pkgNode?.name ?? path.basename(pkgPath);
+
+    const existsNow = pkgNode != null;
+    const existsAtBase = this.packageExistsAtRef(baseRef, pkgPath);
+
+    // ── Added: only in current tree ──────────────────────────────────────
+    if (existsNow && !existsAtBase) {
+      const after = this.extractTypeSnapshotAtRef("HEAD", pkgPath);
+      // Emit one ADDITIVE record per exported symbol
+      const mutations: MutationRecord[] = [...after.values()].map((sig) => ({
+        symbolName: sig.name,
+        mutationClass: "ADDITIVE",
+        before: null,
+        after: sig,
+        detail: `new export '${sig.name}' added (package added)`,
+      }));
+      return { packageName, status: "added", before: null, after, mutations };
+    }
+
+    // ── Deleted: only at base ref ─────────────────────────────────────────
+    if (!existsNow && existsAtBase) {
+      const before = this.extractTypeSnapshotAtRef(baseRef, pkgPath);
+      const mutations: MutationRecord[] = [...before.values()].map((sig) => ({
+        symbolName: sig.name,
+        mutationClass: "REMOVED",
+        before: sig,
+        after: null,
+        detail: `export '${sig.name}' removed (package deleted)`,
+      }));
+      return { packageName, status: "deleted", before, after: null, mutations };
+    }
+
+    // ── Changed: exists on both sides ────────────────────────────────────
+    const before = this.extractTypeSnapshotAtRef(baseRef, pkgPath);
+    const extractor = new TypeSurfaceExtractor(this.rootDir);
+    const after = extractor.extract(pkgPath);
+    const mutations = diffSignatures(before, after);
+
+    return { packageName, status: "changed", before, after, mutations };
+  }
+
+  /**
+   * Returns true if `pkgPath` has any tracked files at `ref`.
+   * Uses `git ls-tree` — no snapshot reconstruction needed.
+   */
+  private packageExistsAtRef(ref: string, pkgPath: string): boolean {
+    const pkgRel = path.relative(this.rootDir, pkgPath).replace(/\\/g, "/");
+    const files = gitLsTree(ref, pkgRel, this.rootDir);
+    return files.length > 0;
   }
 }
