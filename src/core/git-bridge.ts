@@ -2,8 +2,9 @@ import path from "path";
 import os from "os";
 import fs from "fs";
 import { execSync } from "child_process";
-import type { PackageNode } from "../types/index.js";
-import { WorkspaceScanner } from "./workspace-scanner.js";
+import type { PackageNode, SignatureMap } from "../types/index";
+import { WorkspaceScanner } from "./workspace-scanner";
+import { TypeSurfaceExtractor } from "./type-surface";
 
 function runGit(args: string, cwd: string): string {
   try {
@@ -184,5 +185,30 @@ export class GitBridge {
     }
 
     return { dir: tmpDir, cleanup };
+  }
+
+  /**
+   * Extract the exported type surface of `pkgPath` as it existed at `ref`.
+   *
+   * Reconstructs the package into a temp directory via `git show`, runs
+   * `TypeSurfaceExtractor` against it, then cleans up. The returned
+   * `SignatureMap` is identical to what you'd get from checking out `ref`
+   * and running the extractor locally.
+   *
+   * @param ref      Any git ref — HEAD, branch name, or commit SHA.
+   * @param pkgPath  Absolute path to the package in the current working tree
+   *                 (used to locate files; the name comes from its package.json).
+   */
+  extractTypeSnapshotAtRef(ref: string, pkgPath: string): SignatureMap {
+    const { dir, cleanup } = this.extractPackageAtRef(ref, pkgPath);
+
+    try {
+      const extractor = new TypeSurfaceExtractor(dir);
+      // Pass no gitSha — caching against the temp dir path is meaningless;
+      // callers who want caching should cache the returned SignatureMap themselves.
+      return extractor.extract(dir);
+    } finally {
+      cleanup();
+    }
   }
 }
