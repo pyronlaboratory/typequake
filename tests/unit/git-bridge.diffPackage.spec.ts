@@ -211,7 +211,6 @@ describe("GitBridge.diffPackage — deleted", () => {
       baseSha,
       path.join(FIXTURE_ROOT, "packages/deleted"),
     );
-    // Falls back to basename since pkg isn't in current workspace
-    expect(result.packageName).toBe("deleted");
+    expect(result.packageName).toBe("@fixture/deleted");
   });
 });

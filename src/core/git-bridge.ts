@@ -253,15 +253,33 @@ export class GitBridge {
 
     // ── Deleted: only at base ref ─────────────────────────────────────────
     if (!existsNow && existsAtBase) {
-      const before = this.extractTypeSnapshotAtRef(baseRef, pkgPath);
-      const mutations: MutationRecord[] = [...before.values()].map((sig) => ({
-        symbolName: sig.name,
-        mutationClass: "REMOVED",
-        before: sig,
-        after: null,
-        detail: `export '${sig.name}' removed (package deleted)`,
-      }));
-      return { packageName, status: "deleted", before, after: null, mutations };
+      const { dir, cleanup } = this.extractPackageAtRef(baseRef, pkgPath);
+      try {
+        const pkgJsonPath = path.join(dir, "package.json");
+        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
+        const resolvedName = pkgJson.name ?? path.basename(pkgPath);
+
+        const extractor = new TypeSurfaceExtractor(dir);
+        const before = extractor.extract(dir);
+
+        const mutations: MutationRecord[] = [...before.values()].map((sig) => ({
+          symbolName: sig.name,
+          mutationClass: "REMOVED",
+          before: sig,
+          after: null,
+          detail: `export '${sig.name}' removed (package deleted)`,
+        }));
+
+        return {
+          packageName: resolvedName,
+          status: "deleted",
+          before,
+          after: null,
+          mutations,
+        };
+      } finally {
+        cleanup();
+      }
     }
 
     // ── Changed: exists on both sides ────────────────────────────────────
