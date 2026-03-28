@@ -1,4 +1,6 @@
 import path from "path";
+import os from "os";
+import fs from "fs";
 import { execSync } from "child_process";
 import type { PackageNode } from "../types/index.js";
 import { WorkspaceScanner } from "./workspace-scanner.js";
@@ -50,6 +52,51 @@ function matchPackage(
   return best;
 }
 
+/**
+ * Attempt to read a file's content at a given git ref via `git show`.
+ * Returns `null` if the file did not exist at that ref.
+ */
+function gitShow(ref: string, repoRelPath: string, cwd: string): string | null {
+  try {
+    return execSync(`git show ${ref}:${repoRelPath}`, {
+      cwd,
+      encoding: "utf-8",
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * List all files tracked under a given path prefix at a ref.
+ * Uses `git ls-tree -r --name-only` which works for HEAD, branches, and SHAs.
+ */
+function gitLsTree(ref: string, prefix: string, cwd: string): string[] {
+  try {
+    const out = execSync(`git ls-tree -r --name-only ${ref} -- ${prefix}`, {
+      cwd,
+      encoding: "utf-8",
+    });
+    return out.split("\n").map(normalisePath).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+const SYNTHESIZED_TSCONFIG = JSON.stringify(
+  {
+    compilerOptions: {
+      strict: true,
+      skipLibCheck: true,
+      noEmit: true,
+      moduleResolution: "node",
+      esModuleInterop: true,
+    },
+  },
+  null,
+  2,
+);
+
 export class GitBridge {
   private readonly scanner: WorkspaceScanner;
 
@@ -58,7 +105,7 @@ export class GitBridge {
   }
 
   /**
-   * Returns the deduplicated list of workspace package **names** that contain
+   * Returns the deduplicated list of workspace package names that contain
    * at least one file changed between `baseRef` and the current working tree.
    *
    * Uses `git diff --name-only <baseRef>` so untracked / unstaged changes are
@@ -81,5 +128,61 @@ export class GitBridge {
     }
 
     return Array.from(affected).sort();
+  }
+
+  /**
+   * Reconstruct a package's full file system state at `ref` into a temp
+   * directory. The caller receives the temp dir path and a `cleanup` function
+   * that removes it. All files tracked under the package path at `ref` are
+   * mirrored; a `tsconfig.json` is synthesized if one is absent.
+   *
+   * @returns `{ dir, cleanup }` — call `cleanup()` when done.
+   */
+  extractPackageAtRef(
+    ref: string,
+    pkgPath: string,
+  ): { dir: string; cleanup: () => void } {
+    // pkgPath relative to repo root (forward slashes)
+    const pkgRel = path.relative(this.rootDir, pkgPath).replace(/\\/g, "/");
+
+    const trackedFiles = gitLsTree(ref, pkgRel, this.rootDir);
+
+    if (trackedFiles.length === 0) {
+      throw new Error(
+        `No files found for path "${pkgRel}" at ref "${ref}". ` +
+          `The package may not exist at this ref.`,
+      );
+    }
+
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "typequake-snapshot-"),
+    );
+
+    const cleanup = () => fs.rmSync(tmpDir, { recursive: true, force: true });
+
+    try {
+      for (const repoRelFile of trackedFiles) {
+        const content = gitShow(ref, repoRelFile, this.rootDir);
+        if (content === null) continue;
+
+        // Strip the package prefix to get the path inside the temp dir.
+        const relativeToPackage = repoRelFile.slice(pkgRel.length + 1);
+        const dest = path.join(tmpDir, relativeToPackage);
+
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, content, "utf-8");
+      }
+
+      // Synthesize tsconfig.json if the package didn't have one at this ref.
+      const tsconfigDest = path.join(tmpDir, "tsconfig.json");
+      if (!fs.existsSync(tsconfigDest)) {
+        fs.writeFileSync(tsconfigDest, SYNTHESIZED_TSCONFIG, "utf-8");
+      }
+    } catch (err) {
+      cleanup();
+      throw err;
+    }
+
+    return { dir: tmpDir, cleanup };
   }
 }
