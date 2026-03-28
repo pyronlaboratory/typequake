@@ -117,7 +117,7 @@ export interface ImpactReport {
   detail: string;
 }
 
-// ── Package-level diff result ────────────────────────────────────────────────
+// ── Git Bridge ——————————————────────────────────────────────────────────────
 
 export type PackageDiffStatus = "changed" | "added" | "deleted";
 
