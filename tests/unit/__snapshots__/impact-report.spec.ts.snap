@@ -1,0 +1,213 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`generateReport > all-clear: returns empty array when no consumer imports a changed symbol 1`] = `[]`;
+
+exports[`generateReport > all-clear: returns empty array when there are no mutations 1`] = `[]`;
+
+exports[`generateReport > mixed severity output is sorted correctly 1`] = `
+[
+  {
+    "consumerPackage": "/workspace/analytics",
+    "detail": "required property 'id' removed from UserRecord",
+    "mutationClass": "BREAKING",
+    "sites": [
+      {
+        "column": 1,
+        "consumerPackage": "/workspace/analytics",
+        "filePath": "/workspace/pkg-consumer/src/index.ts",
+        "isTypeOnly": false,
+        "line": 1,
+        "localAlias": null,
+        "symbolName": "UserRecord",
+        "usageCount": 1,
+      },
+    ],
+    "symbol": "UserRecord",
+  },
+  {
+    "consumerPackage": "/workspace/api",
+    "detail": "required property 'id' removed from UserRecord",
+    "mutationClass": "BREAKING",
+    "sites": [
+      {
+        "column": 1,
+        "consumerPackage": "/workspace/api",
+        "filePath": "/workspace/pkg-consumer/src/index.ts",
+        "isTypeOnly": false,
+        "line": 1,
+        "localAlias": null,
+        "symbolName": "UserRecord",
+        "usageCount": 1,
+      },
+    ],
+    "symbol": "UserRecord",
+  },
+  {
+    "consumerPackage": "/workspace/dashboard",
+    "detail": "required property 'id' removed from UserRecord",
+    "mutationClass": "BREAKING",
+    "sites": [
+      {
+        "column": 1,
+        "consumerPackage": "/workspace/dashboard",
+        "filePath": "/workspace/pkg-consumer/src/index.ts",
+        "isTypeOnly": false,
+        "line": 1,
+        "localAlias": null,
+        "symbolName": "UserRecord",
+        "usageCount": 1,
+      },
+    ],
+    "symbol": "UserRecord",
+  },
+  {
+    "consumerPackage": "/workspace/analytics",
+    "detail": "type of 'Role' widened from 'string' to 'string | undefined'",
+    "mutationClass": "WIDENING",
+    "sites": [
+      {
+        "column": 1,
+        "consumerPackage": "/workspace/analytics",
+        "filePath": "/workspace/pkg-consumer/src/index.ts",
+        "isTypeOnly": false,
+        "line": 1,
+        "localAlias": null,
+        "symbolName": "Role",
+        "usageCount": 1,
+      },
+    ],
+    "symbol": "Role",
+  },
+  {
+    "consumerPackage": "/workspace/api",
+    "detail": "type of 'Role' widened from 'string' to 'string | undefined'",
+    "mutationClass": "WIDENING",
+    "sites": [
+      {
+        "column": 1,
+        "consumerPackage": "/workspace/api",
+        "filePath": "/workspace/pkg-consumer/src/index.ts",
+        "isTypeOnly": false,
+        "line": 1,
+        "localAlias": null,
+        "symbolName": "Role",
+        "usageCount": 1,
+      },
+    ],
+    "symbol": "Role",
+  },
+  {
+    "consumerPackage": "/workspace/dashboard",
+    "detail": "type of 'Role' widened from 'string' to 'string | undefined'",
+    "mutationClass": "WIDENING",
+    "sites": [
+      {
+        "column": 1,
+        "consumerPackage": "/workspace/dashboard",
+        "filePath": "/workspace/pkg-consumer/src/index.ts",
+        "isTypeOnly": false,
+        "line": 1,
+        "localAlias": null,
+        "symbolName": "Role",
+        "usageCount": 1,
+      },
+    ],
+    "symbol": "Role",
+  },
+  {
+    "consumerPackage": "/workspace/analytics",
+    "detail": "optional property 'timeout' added to Config",
+    "mutationClass": "ADDITIVE",
+    "sites": [
+      {
+        "column": 1,
+        "consumerPackage": "/workspace/analytics",
+        "filePath": "/workspace/pkg-consumer/src/index.ts",
+        "isTypeOnly": false,
+        "line": 1,
+        "localAlias": null,
+        "symbolName": "Config",
+        "usageCount": 1,
+      },
+    ],
+    "symbol": "Config",
+  },
+  {
+    "consumerPackage": "/workspace/api",
+    "detail": "optional property 'timeout' added to Config",
+    "mutationClass": "ADDITIVE",
+    "sites": [
+      {
+        "column": 1,
+        "consumerPackage": "/workspace/api",
+        "filePath": "/workspace/pkg-consumer/src/index.ts",
+        "isTypeOnly": false,
+        "line": 1,
+        "localAlias": null,
+        "symbolName": "Config",
+        "usageCount": 1,
+      },
+    ],
+    "symbol": "Config",
+  },
+  {
+    "consumerPackage": "/workspace/dashboard",
+    "detail": "optional property 'timeout' added to Config",
+    "mutationClass": "ADDITIVE",
+    "sites": [
+      {
+        "column": 1,
+        "consumerPackage": "/workspace/dashboard",
+        "filePath": "/workspace/pkg-consumer/src/index.ts",
+        "isTypeOnly": false,
+        "line": 1,
+        "localAlias": null,
+        "symbolName": "Config",
+        "usageCount": 1,
+      },
+    ],
+    "symbol": "Config",
+  },
+]
+`;
+
+exports[`generateReport > single breaking change with two consumers 1`] = `
+[
+  {
+    "consumerPackage": "@repo/api",
+    "detail": "required property 'id' removed from UserRecord",
+    "mutationClass": "BREAKING",
+    "sites": [
+      {
+        "column": 1,
+        "consumerPackage": "@repo/api",
+        "filePath": "/workspace/api/src/user.ts",
+        "isTypeOnly": false,
+        "line": 3,
+        "localAlias": null,
+        "symbolName": "UserRecord",
+        "usageCount": 1,
+      },
+    ],
+    "symbol": "UserRecord",
+  },
+  {
+    "consumerPackage": "@repo/dashboard",
+    "detail": "required property 'id' removed from UserRecord",
+    "mutationClass": "BREAKING",
+    "sites": [
+      {
+        "column": 1,
+        "consumerPackage": "@repo/dashboard",
+        "filePath": "/workspace/dashboard/src/page.ts",
+        "isTypeOnly": false,
+        "line": 7,
+        "localAlias": null,
+        "symbolName": "UserRecord",
+        "usageCount": 1,
+      },
+    ],
+    "symbol": "UserRecord",
+  },
+]
+`;
