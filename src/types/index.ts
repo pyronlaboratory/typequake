@@ -88,3 +88,16 @@ export interface MutationRecord {
   after: TypeSignature | null;
   detail: string;
 }
+
+// ── Import Sites Resolver ───────────────────────────────────────────────────
+
+export interface ImportSite {
+  consumerPackage: string;
+  filePath: string;
+  line: number;
+  column: number;
+  symbolName: string;
+  localAlias: string | null;
+  usageCount: number;
+  isTypeOnly: boolean;
+}
