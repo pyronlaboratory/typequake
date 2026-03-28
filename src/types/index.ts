@@ -25,6 +25,11 @@ export interface WorkspaceConfig {
   rootDir: string;
 }
 
+export interface WorkspaceGraph {
+  graph: DependencyGraph;
+  packages: PackageNode[];
+}
+
 export interface PackageJson {
   name?: string;
   version?: string;
@@ -100,4 +105,14 @@ export interface ImportSite {
   localAlias: string | null;
   usageCount: number;
   isTypeOnly: boolean;
+}
+
+// ── Impact Report ────────────────────────────────────────────────────────────
+
+export interface ImpactReport {
+  mutationClass: TypeMutationClass;
+  symbol: string;
+  consumerPackage: string;
+  sites: ImportSite[];
+  detail: string;
 }
