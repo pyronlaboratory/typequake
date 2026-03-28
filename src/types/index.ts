@@ -116,3 +116,17 @@ export interface ImpactReport {
   sites: ImportSite[];
   detail: string;
 }
+
+// ── Package-level diff result ────────────────────────────────────────────────
+
+export type PackageDiffStatus = "changed" | "added" | "deleted";
+
+export interface PackageDiffResult {
+  packageName: string;
+  status: PackageDiffStatus;
+  /** Populated for "changed" and "deleted". null for "added". */
+  before: SignatureMap | null;
+  /** Populated for "changed" and "added". null for "deleted". */
+  after: SignatureMap | null;
+  mutations: MutationRecord[];
+}
