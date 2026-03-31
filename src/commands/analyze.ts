@@ -100,13 +100,13 @@ export async function analyze(
     process.exit(1);
   }
 
-  // if (options.json) {
-  //   const { renderJson } = await import("../renderer/json.tsx");
-  //   renderJson(result);
-  // } else {
-  const { renderTerminal } = await import("../renderer/terminal.tsx");
-  await renderTerminal(result!);
-  // }
+  if (options.json) {
+    const { renderJson } = await import("../renderer/json.ts");
+    renderJson(result);
+  } else {
+    const { renderTerminal } = await import("../renderer/terminal.tsx");
+    await renderTerminal(result!);
+  }
 
   if (options.ci) {
     const hasBreaking = result!.reports.some(
