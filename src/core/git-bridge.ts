@@ -234,61 +234,76 @@ export class GitBridge {
     const pkgNode = packages.find((p) => p.path === pkgPath);
     const packageName = pkgNode?.name ?? path.basename(pkgPath);
 
-    const existsNow = pkgNode != null;
-    const existsAtBase = this.packageExistsAtRef(baseRef, pkgPath);
+    try {
+      const existsNow = pkgNode != null;
+      const existsAtBase = this.packageExistsAtRef(baseRef, pkgPath);
 
-    // ── Added: only in current tree ──────────────────────────────────────
-    if (existsNow && !existsAtBase) {
-      const after = this.extractTypeSnapshotAtRef("HEAD", pkgPath);
-      // Emit one ADDITIVE record per exported symbol
-      const mutations: MutationRecord[] = [...after.values()].map((sig) => ({
-        symbolName: sig.name,
-        mutationClass: "ADDITIVE",
-        before: null,
-        after: sig,
-        detail: `new export '${sig.name}' added (package added)`,
-      }));
-      return { packageName, status: "added", before: null, after, mutations };
-    }
-
-    // ── Deleted: only at base ref ─────────────────────────────────────────
-    if (!existsNow && existsAtBase) {
-      const { dir, cleanup } = this.extractPackageAtRef(baseRef, pkgPath);
-      try {
-        const pkgJsonPath = path.join(dir, "package.json");
-        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
-        const resolvedName = pkgJson.name ?? path.basename(pkgPath);
-
-        const extractor = new TypeSurfaceExtractor(dir);
-        const before = extractor.extract(dir);
-
-        const mutations: MutationRecord[] = [...before.values()].map((sig) => ({
+      // ── Added: only in current tree ──────────────────────────────────────
+      if (existsNow && !existsAtBase) {
+        const extractor = new TypeSurfaceExtractor(this.rootDir);
+        const after = extractor.extract(pkgPath);
+        // Emit one ADDITIVE record per exported symbol
+        const mutations: MutationRecord[] = [...after.values()].map((sig) => ({
           symbolName: sig.name,
-          mutationClass: "REMOVED",
-          before: sig,
-          after: null,
-          detail: `export '${sig.name}' removed (package deleted)`,
+          mutationClass: "ADDITIVE",
+          before: null,
+          after: sig,
+          detail: `new export '${sig.name}' added (package added)`,
         }));
-
-        return {
-          packageName: resolvedName,
-          status: "deleted",
-          before,
-          after: null,
-          mutations,
-        };
-      } finally {
-        cleanup();
+        return { packageName, status: "added", before: null, after, mutations };
       }
+
+      // ── Deleted: only at base ref ─────────────────────────────────────────
+      if (!existsNow && existsAtBase) {
+        const { dir, cleanup } = this.extractPackageAtRef(baseRef, pkgPath);
+        try {
+          const pkgJsonPath = path.join(dir, "package.json");
+          const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
+          const resolvedName = pkgJson.name ?? path.basename(pkgPath);
+
+          const extractor = new TypeSurfaceExtractor(dir);
+          const before = extractor.extract(dir);
+
+          const mutations: MutationRecord[] = [...before.values()].map(
+            (sig) => ({
+              symbolName: sig.name,
+              mutationClass: "REMOVED",
+              before: sig,
+              after: null,
+              detail: `export '${sig.name}' removed (package deleted)`,
+            }),
+          );
+
+          return {
+            packageName: resolvedName,
+            status: "deleted",
+            before,
+            after: null,
+            mutations,
+          };
+        } finally {
+          cleanup();
+        }
+      }
+
+      // ── Changed: exists on both sides ────────────────────────────────────
+      const before = this.extractTypeSnapshotAtRef(baseRef, pkgPath);
+      const extractor = new TypeSurfaceExtractor(this.rootDir);
+      const after = extractor.extract(pkgPath);
+      const mutations = diffSignatures(before, after);
+
+      return { packageName, status: "changed", before, after, mutations };
+    } catch (err: any) {
+      // If extraction failed because of missing entry points or other TS issues,
+      // return an "ignored" status so we don't crash the entire analysis.
+      return {
+        packageName,
+        status: "ignored",
+        before: null,
+        after: null,
+        mutations: [],
+      };
     }
-
-    // ── Changed: exists on both sides ────────────────────────────────────
-    const before = this.extractTypeSnapshotAtRef(baseRef, pkgPath);
-    const extractor = new TypeSurfaceExtractor(this.rootDir);
-    const after = extractor.extract(pkgPath);
-    const mutations = diffSignatures(before, after);
-
-    return { packageName, status: "changed", before, after, mutations };
   }
 
   /**

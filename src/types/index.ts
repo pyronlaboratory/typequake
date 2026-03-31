@@ -119,7 +119,7 @@ export interface ImpactReport {
 
 // ── Git Bridge ——————————————────────────────────────────────────────────────
 
-export type PackageDiffStatus = "changed" | "added" | "deleted";
+export type PackageDiffStatus = "changed" | "added" | "deleted" | "ignored";
 
 export interface PackageDiffResult {
   packageName: string;
