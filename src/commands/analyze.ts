@@ -3,8 +3,9 @@ import type {
   ImpactReport,
   PackageDiffResult,
 } from "../types/index";
-import { GitBridge } from "../core/git-bridge.js";
-import { generateReport } from "../core/impact-report.js";
+import { GitBridge } from "../core/git-bridge";
+import { generateReport } from "../core/impact-report";
+import { isCiMode, runCiCheck } from "../policies/enforcement";
 
 export interface AnalyzeResult {
   baseRef: string;
@@ -100,23 +101,19 @@ export async function analyze(
     process.exit(1);
   }
 
-  if (options.json) {
-    const { renderJson } = await import("../renderer/json.ts");
-    renderJson(result);
-  } else {
-    const { renderTerminal } = await import("../renderer/terminal.tsx");
-    await renderTerminal(result!);
+  if (isCiMode(options.ci ?? false)) {
+    if (options.json) {
+      const { renderJson } = await import("../renderer/json");
+      renderJson(result);
+    }
+
+    // console.log(
+    //   "CI mode active, breaking:",
+    //   result!.reports.filter((r) => r.mutationClass === "BREAKING").length,
+    // );
+    runCiCheck(result!);
   }
 
-  if (options.ci) {
-    const hasBreaking = result!.reports.some(
-      (r) => r.mutationClass === "BREAKING",
-    );
-    if (hasBreaking) {
-      process.stderr.write(
-        "typequake: BREAKING changes detected — failing CI.\n",
-      );
-      process.exit(1);
-    }
-  }
+  const { renderTerminal } = await import("../renderer/terminal");
+  await renderTerminal(result!);
 }
