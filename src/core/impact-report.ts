@@ -22,11 +22,20 @@ export async function generateReport(
   workspaceGraph: WorkspaceGraph,
 ): Promise<ImpactReport[]> {
   if (mutations.length === 0) return [];
+  // Debug
+  // console.log(
+  //   "mutations for",
+  //   modifiedPackage,
+  //   "→",
+  //   mutations.map((m) => m.symbolName),
+  // );
 
   const consumers = getTransitiveDependents(
     modifiedPackage,
     workspaceGraph.graph,
   );
+  // Debug
+  // console.log("consumers of", modifiedPackage, "→", consumers.length);
 
   if (consumers.length === 0) return [];
 
@@ -50,6 +59,7 @@ export async function generateReport(
         modifiedPackage,
         changedSymbols,
       );
+      // console.log("  sites in", consumerName, "→", sites.length);
 
       return sites;
     }),
