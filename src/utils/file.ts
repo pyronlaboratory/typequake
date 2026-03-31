@@ -60,37 +60,69 @@ export function readJson(filePath: string): any | null {
 }
 
 export function resolveGlob(rootDir: string, glob: string): string[] {
-  // supports:
-  // - packages/*
-  // - packages/** (optional shallow recursion)
-
-  const parts = glob.split("/");
-  const baseDir = path.join(rootDir, parts[0]!);
-
-  if (!isDirectory(baseDir)) return [];
-
   const results: string[] = [];
 
-  const entries = fs.readdirSync(baseDir);
+  function walk(currentDir: string, segments: string[]): void {
+    if (segments.length === 0) {
+      if (isDirectory(currentDir)) {
+        results.push(currentDir);
+      }
+      return;
+    }
 
-  for (const entry of entries) {
-    const fullPath = path.join(baseDir, entry);
+    const [head, ...tail] = segments;
 
-    if (!isDirectory(fullPath)) continue;
+    if (head === "**") {
+      // ** matches the current directory AND any subdirectory recursively
+      // 1. Match current directory with the rest of the pattern
+      walk(currentDir, tail);
 
-    results.push(fullPath);
+      // 2. Match subdirectories recursively
+      let entries: string[];
+      try {
+        entries = fs.readdirSync(currentDir);
+      } catch {
+        return;
+      }
 
-    // optional: support "**"
-    if (glob.includes("**")) {
-      const subEntries = fs.readdirSync(fullPath);
-      for (const sub of subEntries) {
-        const subPath = path.join(fullPath, sub);
-        if (isDirectory(subPath)) {
-          results.push(subPath);
+      for (const entry of entries) {
+        const fullPath = path.join(currentDir, entry);
+        if (isDirectory(fullPath)) {
+          walk(fullPath, segments); // continue matching ** in subdirs
         }
+      }
+    } else if (head?.includes("*")) {
+      // Handle segments with wildcards like '*' or 'react-*'
+      let entries: string[];
+      try {
+        entries = fs.readdirSync(currentDir);
+      } catch {
+        return;
+      }
+
+      // Simple wildcard to regex conversion
+      const pattern = new RegExp(
+        "^" + head.replace(/\./g, "\\.").replace(/\*/g, ".*") + "$",
+      );
+
+      for (const entry of entries) {
+        const fullPath = path.join(currentDir, entry);
+        if (pattern.test(entry) && isDirectory(fullPath)) {
+          walk(fullPath, tail);
+        }
+      }
+    } else {
+      const fullPath = path.join(currentDir, head!);
+      if (fs.existsSync(fullPath)) {
+        walk(fullPath, tail);
       }
     }
   }
 
-  return results;
+  // Normalize glob: remove trailing slashes and split
+  const segments = glob.replace(/\/+$/, "").split("/");
+  walk(rootDir, segments);
+
+  // De-duplicate results
+  return Array.from(new Set(results));
 }
