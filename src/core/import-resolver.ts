@@ -324,7 +324,10 @@ export function extractSitesFromFile(
     if (ts.isExportDeclaration(stmt) && stmt.moduleSpecifier) {
       if (!ts.isStringLiteral(stmt.moduleSpecifier)) continue;
       const specifier = stmt.moduleSpecifier.text;
-
+      // Debug
+      // console.log(
+      //   `    [${path.basename(sourceFile.fileName)}] specifier: "${specifier}"`,
+      // );
       if (
         !specifierResolvesToPackage(
           specifier,
@@ -456,6 +459,15 @@ export function resolveImportSites(
   const normalizedPkgPath = path.resolve(consumerPkgPath) + path.sep;
 
   const results: ImportSite[] = [];
+
+  // Debug
+  // const ownFiles = program.getSourceFiles().filter((sf) => {
+  //   if (sf.isDeclarationFile) return false;
+  //   return path.resolve(sf.fileName).startsWith(normalizedPkgPath);
+  // });
+  // console.log(
+  //   `  [${consumerPackage}] total files: ${program.getSourceFiles().length}, own: ${ownFiles.length}`,
+  // );
 
   for (const sourceFile of program.getSourceFiles()) {
     // Skip declaration files — they describe types, not runtime usage sites.

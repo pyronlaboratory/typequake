@@ -1,4 +1,8 @@
-import type { ImpactReport, PackageDiffResult } from "../types/index";
+import type {
+  AnalyzeOptions,
+  ImpactReport,
+  PackageDiffResult,
+} from "../types/index";
 import { GitBridge } from "../core/git-bridge.js";
 import { generateReport } from "../core/impact-report.js";
 
@@ -18,19 +22,27 @@ export interface AnalyzeResult {
  *
  * Returns a stable `AnalyzeResult` suitable for both human and JSON renderers.
  */
-export async function analyze(
+export async function runPipeline(
   baseRef: string,
   rootDir: string = process.cwd(),
 ): Promise<AnalyzeResult> {
   const bridge = new GitBridge(rootDir);
 
   const changedPackageNames = bridge.getChangedPackages(baseRef);
+  // Debug
+  // console.log("changed packages:", changedPackageNames);
 
   if (changedPackageNames.length === 0) {
     return { baseRef, diffs: [], reports: [] };
   }
 
   const { packages, graph } = bridge["scanner"].analyzeWorkspace();
+  // Debug
+  // console.log(
+  //   "total packages found:",
+  //   packages.map((p) => p.name),
+  // );
+  // console.log("graph:", Object.fromEntries(graph));
 
   const workspaceGraph = { graph, packages };
 
@@ -41,6 +53,8 @@ export async function analyze(
     if (!pkgNode) continue;
 
     const result = bridge.diffPackage(baseRef, pkgNode.path);
+    // Debug
+    // console.log(result.packageName, result.status, result.mutations.length);
     diffs.push(result);
   }
 
@@ -65,4 +79,44 @@ export async function analyze(
   });
 
   return { baseRef, diffs, reports };
+}
+
+/**
+ * CLI command handler — called by cli.ts with the parsed options.
+ * Runs the pipeline then dispatches to the appropriate renderer.
+ */
+export async function analyze(
+  baseRef: string,
+  options: AnalyzeOptions,
+): Promise<void> {
+  let result: AnalyzeResult;
+
+  try {
+    result = await runPipeline(baseRef);
+  } catch (err: any) {
+    process.stderr.write(
+      `typequake: analysis failed — ${err.message ?? err}\n`,
+    );
+    process.exit(1);
+  }
+
+  // if (options.json) {
+  //   const { renderJson } = await import("../renderer/json.tsx");
+  //   renderJson(result);
+  // } else {
+  const { renderTerminal } = await import("../renderer/terminal.tsx");
+  await renderTerminal(result!);
+  // }
+
+  if (options.ci) {
+    const hasBreaking = result!.reports.some(
+      (r) => r.mutationClass === "BREAKING",
+    );
+    if (hasBreaking) {
+      process.stderr.write(
+        "typequake: BREAKING changes detected — failing CI.\n",
+      );
+      process.exit(1);
+    }
+  }
 }

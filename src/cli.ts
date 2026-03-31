@@ -8,7 +8,7 @@ function validateRef(value: string): string {
   if (!value?.trim()) {
     throw new InvalidArgumentError("Base ref cannot be empty.");
   }
-  if (/[\x00-\x1f\x7f ~^:?*\[\\]/.test(value)) {
+  if (/[\x00-\x1f\x7f ^:?*\[\\]/.test(value)) {
     throw new InvalidArgumentError(`"${value}" is not a valid git ref.`);
   }
   return value.trim();
