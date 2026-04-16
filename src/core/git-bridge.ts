@@ -3,6 +3,7 @@ import os from "os";
 import fs from "fs";
 import { execSync } from "child_process";
 import type {
+  AnalyzeOptions,
   MutationRecord,
   PackageDiffResult,
   PackageNode,
@@ -112,6 +113,32 @@ export class GitBridge {
   }
 
   /**
+   * Resolve a git ref (branch, tag, relative ref like HEAD~1) to a full 40-char SHA.
+   */
+  getSha(ref: string): string {
+    return runGit(`rev-parse ${ref}`, this.rootDir).trim();
+  }
+
+  /**
+   * Returns true if the working tree has any uncommitted changes (staged or unstaged)
+   * under the given path.
+   */
+  isDirty(pkgPath: string): boolean {
+    const pkgRel = path.relative(this.rootDir, pkgPath).replace(/\\/g, "/");
+    // --quiet exits with 1 if there are changes.
+    // We check both indexed and non-indexed changes.
+    try {
+      execSync(`git diff --quiet HEAD -- "${pkgRel}"`, {
+        cwd: this.rootDir,
+        stdio: "ignore",
+      });
+      return false;
+    } catch {
+      return true;
+    }
+  }
+
+  /**
    * Returns the deduplicated list of workspace package names that contain
    * at least one file changed between `baseRef` and the current working tree.
    *
@@ -205,14 +232,17 @@ export class GitBridge {
    * @param pkgPath  Absolute path to the package in the current working tree
    *                 (used to locate files; the name comes from its package.json).
    */
-  extractTypeSnapshotAtRef(ref: string, pkgPath: string): SignatureMap {
+  extractTypeSnapshotAtRef(
+    ref: string,
+    pkgPath: string,
+    gitSha?: string,
+    useCache = true,
+  ): SignatureMap {
     const { dir, cleanup } = this.extractPackageAtRef(ref, pkgPath);
 
     try {
-      const extractor = new TypeSurfaceExtractor(dir);
-      // Pass no gitSha — caching against the temp dir path is meaningless;
-      // callers who want caching should cache the returned SignatureMap themselves.
-      return extractor.extract(dir);
+      const extractor = new TypeSurfaceExtractor(this.rootDir);
+      return extractor.extract(dir, gitSha, useCache);
     } finally {
       cleanup();
     }
@@ -228,20 +258,44 @@ export class GitBridge {
    *
    * Never throws for edge cases — returns a typed result instead.
    */
-  diffPackage(baseRef: string, pkgPath: string): PackageDiffResult {
+  diffPackage(
+    baseRef: string,
+    pkgPath: string,
+    options: AnalyzeOptions = {},
+  ): PackageDiffResult {
+    const useCache = options.cache !== false;
     const { packages } = this.scanner.analyzeWorkspace();
 
     const pkgNode = packages.find((p) => p.path === pkgPath);
-    const packageName = pkgNode?.name ?? path.basename(pkgPath);
+    // const packageName = pkgNode?.name ?? path.basename(pkgPath);
+    let packageName = pkgNode?.name;
+    if (!packageName) {
+      const pkgRel = path.relative(this.rootDir, pkgPath).replace(/\\/g, "/");
+      const raw = gitShow(baseRef, `${pkgRel}/package.json`, this.rootDir);
+      if (raw) {
+        try {
+          packageName = JSON.parse(raw)?.name;
+        } catch {}
+      }
+      packageName ??= path.basename(pkgPath); // genuine last resort
+    }
 
     try {
       const existsNow = pkgNode != null;
       const existsAtBase = this.packageExistsAtRef(baseRef, pkgPath);
 
+      const baseSha = this.getSha(baseRef);
+      const headSha = this.getSha("HEAD");
+      const isDirty = this.isDirty(pkgPath);
+
       // ── Added: only in current tree ──────────────────────────────────────
       if (existsNow && !existsAtBase) {
         const extractor = new TypeSurfaceExtractor(this.rootDir);
-        const after = extractor.extract(pkgPath);
+        const after = extractor.extract(
+          pkgPath,
+          isDirty ? undefined : headSha,
+          useCache,
+        );
         // Emit one ADDITIVE record per exported symbol
         const mutations: MutationRecord[] = [...after.values()].map((sig) => ({
           symbolName: sig.name,
@@ -255,41 +309,43 @@ export class GitBridge {
 
       // ── Deleted: only at base ref ─────────────────────────────────────────
       if (!existsNow && existsAtBase) {
-        const { dir, cleanup } = this.extractPackageAtRef(baseRef, pkgPath);
-        try {
-          const pkgJsonPath = path.join(dir, "package.json");
-          const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
-          const resolvedName = pkgJson.name ?? path.basename(pkgPath);
+        const before = this.extractTypeSnapshotAtRef(
+          baseRef,
+          pkgPath,
+          baseSha,
+          useCache,
+        );
 
-          const extractor = new TypeSurfaceExtractor(dir);
-          const before = extractor.extract(dir);
+        const mutations: MutationRecord[] = [...before.values()].map((sig) => ({
+          symbolName: sig.name,
+          mutationClass: "REMOVED",
+          before: sig,
+          after: null,
+          detail: `export '${sig.name}' removed (package deleted)`,
+        }));
 
-          const mutations: MutationRecord[] = [...before.values()].map(
-            (sig) => ({
-              symbolName: sig.name,
-              mutationClass: "REMOVED",
-              before: sig,
-              after: null,
-              detail: `export '${sig.name}' removed (package deleted)`,
-            }),
-          );
-
-          return {
-            packageName: resolvedName,
-            status: "deleted",
-            before,
-            after: null,
-            mutations,
-          };
-        } finally {
-          cleanup();
-        }
+        return {
+          packageName,
+          status: "deleted",
+          before,
+          after: null,
+          mutations,
+        };
       }
 
       // ── Changed: exists on both sides ────────────────────────────────────
-      const before = this.extractTypeSnapshotAtRef(baseRef, pkgPath);
+      const before = this.extractTypeSnapshotAtRef(
+        baseRef,
+        pkgPath,
+        baseSha,
+        useCache,
+      );
       const extractor = new TypeSurfaceExtractor(this.rootDir);
-      const after = extractor.extract(pkgPath);
+      const after = extractor.extract(
+        pkgPath,
+        isDirty ? undefined : headSha,
+        useCache,
+      );
       const mutations = diffSignatures(before, after);
 
       return { packageName, status: "changed", before, after, mutations };

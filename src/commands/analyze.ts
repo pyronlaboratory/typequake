@@ -26,6 +26,7 @@ export interface AnalyzeResult {
 export async function runPipeline(
   baseRef: string,
   rootDir: string = process.cwd(),
+  options: AnalyzeOptions = {},
 ): Promise<AnalyzeResult> {
   const bridge = new GitBridge(rootDir);
 
@@ -53,7 +54,7 @@ export async function runPipeline(
     const pkgNode = packages.find((p) => p.name === pkgName);
     if (!pkgNode) continue;
 
-    const result = bridge.diffPackage(baseRef, pkgNode.path);
+    const result = bridge.diffPackage(baseRef, pkgNode.path, options);
     // Debug
     // console.log(result.packageName, result.status, result.mutations.length);
     diffs.push(result);
@@ -93,7 +94,7 @@ export async function analyze(
   let result: AnalyzeResult;
 
   try {
-    result = await runPipeline(baseRef);
+    result = await runPipeline(baseRef, process.cwd(), options);
   } catch (err: any) {
     process.stderr.write(
       `typequake: analysis failed — ${err.message ?? err}\n`,

@@ -12,7 +12,12 @@ import {
 } from "vitest";
 
 import { TypeSurfaceExtractor } from "../../src/core/type-surface.js";
-import { readCache, writeCache, deleteCache } from "../../src/utils/cache.js";
+import {
+  readCache,
+  writeCache,
+  deleteCache,
+  getCacheKey,
+} from "../../src/utils/cache.js";
 import type { SignatureMap } from "../../src/types/index.js";
 
 const FIXTURES = path.resolve(import.meta.dirname, "../fixtures/type-surface");
@@ -227,11 +232,17 @@ describe("TypeSurfaceExtractor – disk cache", () => {
     const sha = "abc1234";
     extractor.extract(BASELINE_PKG, sha);
 
+    const tsconfig = fs.readFileSync(
+      path.join(BASELINE_PKG, "tsconfig.json"),
+      "utf-8",
+    );
+    const hash = getCacheKey("@fixtures/baseline-pkg", sha, tsconfig);
+
     const cachePath = path.join(
       rootDir,
       ".typequake",
       "cache",
-      `fixtures__baseline-pkg.${sha}.json`,
+      `fixtures__baseline-pkg.${hash}.json`,
     );
     expect(fs.existsSync(cachePath)).toBe(true);
     const raw = JSON.parse(fs.readFileSync(cachePath, "utf-8"));
