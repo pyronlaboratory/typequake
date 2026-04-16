@@ -8,7 +8,7 @@ import type {
   SignatureMap,
   TypeSignature,
 } from "../types/index.js";
-import { readCache, writeCache } from "../utils/cache.ts";
+import { getCacheKey, readCache, writeCache } from "../utils/cache.ts";
 
 const programCache = new Map<string, ts.Program>();
 
@@ -59,6 +59,14 @@ function resolveEntryPoint(
   }
 
   return null;
+}
+
+function loadTsconfigContent(packagePath: string): string {
+  const tsconfigPath = path.join(packagePath, "tsconfig.json");
+  if (!fs.existsSync(tsconfigPath)) {
+    return "";
+  }
+  return fs.readFileSync(tsconfigPath, "utf-8");
 }
 
 function loadCompilerOptions(packagePath: string): ts.CompilerOptions {
@@ -238,8 +246,13 @@ export class TypeSurfaceExtractor {
    * @param packagePath  Absolute path to the package directory.
    * @param gitSha       Optional git SHA used as the cache key.  When omitted
    *                     caching is skipped entirely for this call.
+   * @param useCache     Whether to use the disk cache. Defaults to true.
    */
-  extract(packagePath: string, gitSha?: string): SignatureMap {
+  extract(
+    packagePath: string,
+    gitSha?: string,
+    useCache = true,
+  ): SignatureMap {
     const pkgJsonPath = path.join(packagePath, "package.json");
     if (!fs.existsSync(pkgJsonPath)) {
       throw new Error(`No package.json found at ${packagePath}`);
@@ -250,8 +263,11 @@ export class TypeSurfaceExtractor {
     );
     const pkgName = pkgJson.name ?? path.basename(packagePath);
 
-    if (gitSha) {
-      const cached = readCache(this.rootDir, pkgName, gitSha);
+    let cacheHash: string | undefined;
+    if (gitSha && useCache) {
+      const tsconfigContent = loadTsconfigContent(packagePath);
+      cacheHash = getCacheKey(pkgName, gitSha, tsconfigContent);
+      const cached = readCache(this.rootDir, pkgName, cacheHash);
       if (cached) return cached;
     }
 
@@ -295,8 +311,8 @@ export class TypeSurfaceExtractor {
       }
     }
 
-    if (gitSha) {
-      writeCache(this.rootDir, pkgName, gitSha, signatures);
+    if (gitSha && useCache && cacheHash) {
+      writeCache(this.rootDir, pkgName, cacheHash, signatures);
     }
 
     const sorted = new Map(

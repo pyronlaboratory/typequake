@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import fs from "fs";
 import path from "path";
 import type { SignatureMap, TypeSignature } from "../types/index.js";
@@ -11,12 +12,30 @@ function safePkgName(pkgName: string): string {
   return pkgName.replace(/^@/, "").replace(/\//g, "__");
 }
 
-function cachePath(rootDir: string, pkgName: string, gitSha: string): string {
+/**
+ * Generate a unique cache key based on package name, git SHA, and tsconfig content.
+ */
+export function getCacheKey(
+  pkgName: string,
+  gitSha: string,
+  tsconfigContent: string,
+): string {
+  // return createHash("sha256")
+  //   .update(pkgName + gitSha + tsconfigContent)
+  //   .digest("hex");
+  const configHash = createHash("sha256")
+    .update(pkgName + tsconfigContent)
+    .digest("hex")
+    .slice(0, 16);
+  return `${gitSha}.${configHash}`;
+}
+
+function cachePath(rootDir: string, pkgName: string, hash: string): string {
   return path.join(
     rootDir,
     ".typequake",
     "cache",
-    `${safePkgName(pkgName)}.${gitSha}.json`,
+    `${safePkgName(pkgName)}.${hash}.json`,
   );
 }
 
@@ -27,9 +46,9 @@ function cachePath(rootDir: string, pkgName: string, gitSha: string): string {
 export function readCache(
   rootDir: string,
   pkgName: string,
-  gitSha: string,
+  hash: string,
 ): SignatureMap | null {
-  const p = cachePath(rootDir, pkgName, gitSha);
+  const p = cachePath(rootDir, pkgName, hash);
   if (!fs.existsSync(p)) return null;
 
   try {
@@ -56,10 +75,10 @@ export function readCache(
 export function writeCache(
   rootDir: string,
   pkgName: string,
-  gitSha: string,
+  hash: string,
   signatures: SignatureMap,
 ): void {
-  const p = cachePath(rootDir, pkgName, gitSha);
+  const p = cachePath(rootDir, pkgName, hash);
   fs.mkdirSync(path.dirname(p), { recursive: true });
 
   const obj: Record<string, TypeSignature> = {};
@@ -76,8 +95,8 @@ export function writeCache(
 export function deleteCache(
   rootDir: string,
   pkgName: string,
-  gitSha: string,
+  hash: string,
 ): void {
-  const p = cachePath(rootDir, pkgName, gitSha);
+  const p = cachePath(rootDir, pkgName, hash);
   if (fs.existsSync(p)) fs.unlinkSync(p);
 }
