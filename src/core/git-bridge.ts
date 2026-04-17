@@ -12,6 +12,8 @@ import type {
 import { WorkspaceScanner } from "./workspace-scanner";
 import { TypeSurfaceExtractor } from "./type-surface";
 import { diff as diffSignatures } from "./semantic-differ.js";
+import { tracker } from "../utils/performance";
+
 
 function runGit(args: string, cwd: string): string {
   try {
@@ -242,7 +244,9 @@ export class GitBridge {
 
     try {
       const extractor = new TypeSurfaceExtractor(this.rootDir);
-      return extractor.extract(dir, gitSha, useCache);
+      return tracker.track("extraction", () =>
+        extractor.extract(dir, gitSha, useCache),
+      );
     } finally {
       cleanup();
     }
@@ -291,10 +295,8 @@ export class GitBridge {
       // ── Added: only in current tree ──────────────────────────────────────
       if (existsNow && !existsAtBase) {
         const extractor = new TypeSurfaceExtractor(this.rootDir);
-        const after = extractor.extract(
-          pkgPath,
-          isDirty ? undefined : headSha,
-          useCache,
+        const after = tracker.track("extraction", () =>
+          extractor.extract(pkgPath, isDirty ? undefined : headSha, useCache),
         );
         // Emit one ADDITIVE record per exported symbol
         const mutations: MutationRecord[] = [...after.values()].map((sig) => ({
@@ -341,12 +343,12 @@ export class GitBridge {
         useCache,
       );
       const extractor = new TypeSurfaceExtractor(this.rootDir);
-      const after = extractor.extract(
-        pkgPath,
-        isDirty ? undefined : headSha,
-        useCache,
+      const after = tracker.track("extraction", () =>
+        extractor.extract(pkgPath, isDirty ? undefined : headSha, useCache),
       );
-      const mutations = diffSignatures(before, after);
+      const mutations = tracker.track("diff", () =>
+        diffSignatures(before, after),
+      );
 
       return { packageName, status: "changed", before, after, mutations };
     } catch (err: any) {
