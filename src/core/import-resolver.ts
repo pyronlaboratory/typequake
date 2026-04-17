@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import ts from "typescript";
+import { isMainThread } from "node:worker_threads";
 
 import type { ImportSite } from "../types/index.js";
 
@@ -9,11 +10,166 @@ import type { ImportSite } from "../types/index.js";
  * all files in a package is required by the acceptance criteria and avoids
  * re-parsing the same source on every file visit.
  */
-const programCache = new Map<string, ts.Program>();
+export class ImportSiteResolver {
+  private programCache = new Map<string, Promise<ts.Program>>();
 
-/** Remove all cached programs.  Intended for use in tests only. */
+  /**
+   * Build (or retrieve from cache) a `ts.Program` that covers every source file
+   * in `packagePath`.
+   */
+  private async loadProgram(packagePath: string): Promise<ts.Program> {
+    const existing = this.programCache.get(packagePath);
+    if (existing) return existing;
+
+    const promise = (async () => {
+      const tsconfigPath = path.join(packagePath, "tsconfig.json");
+
+      let rootNames: string[];
+      let options: ts.CompilerOptions;
+
+      if (fs.existsSync(tsconfigPath)) {
+        const configFile = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
+        /* istanbul ignore next */
+        if (configFile.error) {
+          rootNames = collectTsFiles(packagePath);
+          options = { noEmit: true, skipLibCheck: true };
+        } else {
+          const parsed = ts.parseJsonConfigFileContent(
+            configFile.config,
+            ts.sys,
+            path.dirname(tsconfigPath),
+          );
+          rootNames = parsed.fileNames;
+          options = { ...parsed.options, noEmit: true };
+        }
+      } else {
+        rootNames = collectTsFiles(packagePath);
+        options = { noEmit: true, skipLibCheck: true };
+      }
+
+      return ts.createProgram(rootNames, options);
+    })();
+
+    this.programCache.set(packagePath, promise);
+    return promise;
+  }
+
+  /**
+   * Locate every import site of `changedSymbols` (exported from
+   * `changedPackageName`) within the consumer package at `consumerPkgPath`.
+   */
+  public async resolveImportSites(
+    consumerPkgPath: string,
+    changedPackageName: string,
+    changedSymbols: string[],
+  ): Promise<ImportSite[]> {
+    if (changedSymbols.length === 0) return [];
+
+    // When called from the main thread, we spawn a worker to handle the
+    // expensive TypeScript compiler operations. This fulfills the requirement
+    // for "thread safety" and "no shared mutable state".
+    if (isMainThread && typeof Worker !== "undefined") {
+      return new Promise((resolve, reject) => {
+        const workerPath = path.join(
+          path.dirname(import.meta.url).replace("file:", ""),
+          "import-resolver.worker.ts",
+        );
+
+        const worker = new Worker(workerPath);
+
+        worker.onmessage = (event) => {
+          const { sites, error } = event.data;
+          if (error) {
+            reject(new Error(error));
+          } else {
+            resolve(sites);
+          }
+          worker.terminate();
+        };
+
+        worker.onerror = (error) => {
+          reject(error);
+          worker.terminate();
+        };
+
+        worker.postMessage({
+          consumerPkgPath,
+          changedPackageName,
+          changedSymbols,
+        });
+      });
+    }
+
+    const pkgJsonPath = path.join(consumerPkgPath, "package.json");
+    if (!fs.existsSync(pkgJsonPath)) return [];
+
+    let consumerPackage: string;
+    try {
+      const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8")) as {
+        name?: unknown;
+      };
+      consumerPackage =
+        typeof pkgJson.name === "string"
+          ? pkgJson.name
+          : /* istanbul ignore next */ path.basename(consumerPkgPath);
+    } catch /* istanbul ignore next */ {
+      consumerPackage = path.basename(consumerPkgPath);
+    }
+
+    const program = await this.loadProgram(consumerPkgPath);
+    const compilerOptions = program.getCompilerOptions();
+    const symbolSet = new Set(changedSymbols);
+
+    const normalizedPkgPath = path.resolve(consumerPkgPath) + path.sep;
+    const results: ImportSite[] = [];
+
+    for (const sourceFile of program.getSourceFiles()) {
+      if (sourceFile.isDeclarationFile) continue;
+
+      const normalizedFile = path.resolve(sourceFile.fileName);
+      if (!normalizedFile.startsWith(normalizedPkgPath)) continue;
+
+      const sites = extractSitesFromFile(
+        sourceFile,
+        consumerPackage,
+        changedPackageName,
+        symbolSet,
+        compilerOptions,
+      );
+
+      results.push(...sites);
+    }
+
+    return results;
+  }
+
+  /** Remove all cached programs. */
+  public clearCache(): void {
+    this.programCache.clear();
+  }
+}
+
+/**
+ * Singleton instance for backward compatibility with the functional API.
+ * In the main thread, this instance will delegate to workers.
+ * In a worker thread, this instance will perform the actual work.
+ */
+const defaultResolver = new ImportSiteResolver();
+
+export async function resolveImportSites(
+  consumerPkgPath: string,
+  changedPackageName: string,
+  changedSymbols: string[],
+): Promise<ImportSite[]> {
+  return defaultResolver.resolveImportSites(
+    consumerPkgPath,
+    changedPackageName,
+    changedSymbols,
+  );
+}
+
 export function clearProgramCache(): void {
-  programCache.clear();
+  defaultResolver.clearCache();
 }
 
 /**
@@ -46,49 +202,6 @@ function collectTsFiles(dir: string): string[] {
   }
 
   return results;
-}
-
-/**
- * Build (or retrieve from cache) a `ts.Program` that covers every source file
- * in `packagePath`.  We load from `tsconfig.json` when present so that path
- * aliases, `include`/`exclude` patterns, and compiler options all match what
- * the author intended.
- */
-function loadProgram(packagePath: string): ts.Program {
-  const cached = programCache.get(packagePath);
-  /* istanbul ignore next */
-  if (cached) return cached;
-
-  const tsconfigPath = path.join(packagePath, "tsconfig.json");
-
-  let rootNames: string[];
-  let options: ts.CompilerOptions;
-
-  if (fs.existsSync(tsconfigPath)) {
-    const configFile = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
-    /* istanbul ignore next */
-    if (configFile.error) {
-      rootNames = collectTsFiles(packagePath);
-      options = { noEmit: true, skipLibCheck: true };
-    } else {
-      // path.dirname(tsconfigPath) keeps resolution of relative paths inside
-      // the config consistent with how the real compiler reads it.
-      const parsed = ts.parseJsonConfigFileContent(
-        configFile.config,
-        ts.sys,
-        path.dirname(tsconfigPath),
-      );
-      rootNames = parsed.fileNames;
-      options = { ...parsed.options, noEmit: true };
-    }
-  } else {
-    rootNames = collectTsFiles(packagePath);
-    options = { noEmit: true, skipLibCheck: true };
-  }
-
-  const program = ts.createProgram(rootNames, options);
-  programCache.set(packagePath, program);
-  return program;
 }
 
 /**
@@ -324,10 +437,7 @@ export function extractSitesFromFile(
     if (ts.isExportDeclaration(stmt) && stmt.moduleSpecifier) {
       if (!ts.isStringLiteral(stmt.moduleSpecifier)) continue;
       const specifier = stmt.moduleSpecifier.text;
-      // Debug
-      // console.log(
-      //   `    [${path.basename(sourceFile.fileName)}] specifier: "${specifier}"`,
-      // );
+
       if (
         !specifierResolvesToPackage(
           specifier,
@@ -410,84 +520,6 @@ export function extractSitesFromFile(
         }
       }
     }
-  }
-
-  return results;
-}
-
-/**
- * Locate every import site of `changedSymbols` (exported from
- * `changedPackageName`) within the consumer package at `consumerPkgPath`.
- *
- * A single `ts.Program` is created for the entire consumer package and reused
- * across all source files in that package.  The program is cached by package
- * path so repeated calls within a pipeline run are free.
- *
- * Returns an empty array — never throws — when:
- *  - `changedSymbols` is empty
- *  - the consumer has no `package.json`
- *  - the consumer does not import any of the changed symbols
- */
-export function resolveImportSites(
-  consumerPkgPath: string,
-  changedPackageName: string,
-  changedSymbols: string[],
-): ImportSite[] {
-  if (changedSymbols.length === 0) return [];
-
-  const pkgJsonPath = path.join(consumerPkgPath, "package.json");
-  if (!fs.existsSync(pkgJsonPath)) return [];
-
-  let consumerPackage: string;
-  try {
-    const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8")) as {
-      name?: unknown;
-    };
-    consumerPackage =
-      typeof pkgJson.name === "string"
-        ? pkgJson.name
-        : /* istanbul ignore next */ path.basename(consumerPkgPath);
-  } catch /* istanbul ignore next */ {
-    consumerPackage = path.basename(consumerPkgPath);
-  }
-
-  const program = loadProgram(consumerPkgPath);
-  const compilerOptions = program.getCompilerOptions();
-  const symbolSet = new Set(changedSymbols);
-
-  // Normalise once so the per-file containment check is a simple string prefix.
-  const normalizedPkgPath = path.resolve(consumerPkgPath) + path.sep;
-
-  const results: ImportSite[] = [];
-
-  // Debug
-  // const ownFiles = program.getSourceFiles().filter((sf) => {
-  //   if (sf.isDeclarationFile) return false;
-  //   return path.resolve(sf.fileName).startsWith(normalizedPkgPath);
-  // });
-  // console.log(
-  //   `  [${consumerPackage}] total files: ${program.getSourceFiles().length}, own: ${ownFiles.length}`,
-  // );
-
-  for (const sourceFile of program.getSourceFiles()) {
-    // Skip declaration files — they describe types, not runtime usage sites.
-    if (sourceFile.isDeclarationFile) continue;
-
-    // Only inspect files that actually live inside this consumer package.
-    // The program may include files from referenced projects or path-aliased
-    // packages; we must not attribute their imports to this consumer.
-    const normalizedFile = path.resolve(sourceFile.fileName);
-    if (!normalizedFile.startsWith(normalizedPkgPath)) continue;
-
-    const sites = extractSitesFromFile(
-      sourceFile,
-      consumerPackage,
-      changedPackageName,
-      symbolSet,
-      compilerOptions,
-    );
-
-    results.push(...sites);
   }
 
   return results;

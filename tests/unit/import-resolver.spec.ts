@@ -515,17 +515,17 @@ describe("resolveImportSites", () => {
 
   // ── edge cases ─────────────────────────────────────────────────────────────
 
-  it("returns [] when changedSymbols is empty", () => {
-    expect(resolveImportSites(pkg.direct, CHANGED_PKG, [])).toEqual([]);
+  it("returns [] when changedSymbols is empty", async () => {
+    expect(await resolveImportSites(pkg.direct, CHANGED_PKG, [])).toEqual([]);
   });
 
-  it("returns [] when the consumer package has no package.json", () => {
+  it("returns [] when the consumer package has no package.json", async () => {
     const nonexistent = path.join(FIXTURES, "__no_such_package__");
-    expect(resolveImportSites(nonexistent, CHANGED_PKG, ["User"])).toEqual([]);
+    expect(await resolveImportSites(nonexistent, CHANGED_PKG, ["User"])).toEqual([]);
   });
 
-  it("returns [] when the consumer does not import any changed symbol", () => {
-    const sites = resolveImportSites(pkg.noMatch, CHANGED_PKG, [
+  it("returns [] when the consumer does not import any changed symbol", async () => {
+    const sites = await resolveImportSites(pkg.noMatch, CHANGED_PKG, [
       "User",
       "Role",
     ]);
@@ -534,16 +534,16 @@ describe("resolveImportSites", () => {
 
   // ── consumer-direct ────────────────────────────────────────────────────────
 
-  it("finds both named imports in consumer-direct", () => {
-    const sites = resolveImportSites(pkg.direct, CHANGED_PKG, [
+  it("finds both named imports in consumer-direct", async () => {
+    const sites = await resolveImportSites(pkg.direct, CHANGED_PKG, [
       "User",
       "createUser",
     ]);
     expect(sites).toHaveLength(2);
   });
 
-  it("consumer-direct: User site has correct shape", () => {
-    const sites = resolveImportSites(pkg.direct, CHANGED_PKG, [
+  it("consumer-direct: User site has correct shape", async () => {
+    const sites = await resolveImportSites(pkg.direct, CHANGED_PKG, [
       "User",
       "createUser",
     ]);
@@ -561,8 +561,8 @@ describe("resolveImportSites", () => {
     });
   });
 
-  it("consumer-direct: createUser site has correct shape", () => {
-    const sites = resolveImportSites(pkg.direct, CHANGED_PKG, [
+  it("consumer-direct: createUser site has correct shape", async () => {
+    const sites = await resolveImportSites(pkg.direct, CHANGED_PKG, [
       "User",
       "createUser",
     ]);
@@ -580,16 +580,16 @@ describe("resolveImportSites", () => {
     });
   });
 
-  it("consumer-direct: filePath is an absolute path inside the consumer package", () => {
-    const sites = resolveImportSites(pkg.direct, CHANGED_PKG, ["User"]);
+  it("consumer-direct: filePath is an absolute path inside the consumer package", async () => {
+    const sites = await resolveImportSites(pkg.direct, CHANGED_PKG, ["User"]);
     expect(path.isAbsolute(sites[0]!.filePath)).toBe(true);
     expect(sites[0]!.filePath.startsWith(pkg.direct)).toBe(true);
   });
 
   // ── consumer-aliased ───────────────────────────────────────────────────────
 
-  it("consumer-aliased: User is recorded with localAlias='U'", () => {
-    const sites = resolveImportSites(pkg.aliased, CHANGED_PKG, [
+  it("consumer-aliased: User is recorded with localAlias='U'", async () => {
+    const sites = await resolveImportSites(pkg.aliased, CHANGED_PKG, [
       "User",
       "Role",
     ]);
@@ -606,8 +606,8 @@ describe("resolveImportSites", () => {
     });
   });
 
-  it("consumer-aliased: Role has no alias", () => {
-    const sites = resolveImportSites(pkg.aliased, CHANGED_PKG, [
+  it("consumer-aliased: Role has no alias", async () => {
+    const sites = await resolveImportSites(pkg.aliased, CHANGED_PKG, [
       "User",
       "Role",
     ]);
@@ -625,8 +625,8 @@ describe("resolveImportSites", () => {
 
   // ── consumer-type-import ───────────────────────────────────────────────────
 
-  it("consumer-type-import: clause-level import type sets isTypeOnly=true", () => {
-    const sites = resolveImportSites(pkg.typeImport, CHANGED_PKG, [
+  it("consumer-type-import: clause-level import type sets isTypeOnly=true", async () => {
+    const sites = await resolveImportSites(pkg.typeImport, CHANGED_PKG, [
       "User",
       "Role",
     ]);
@@ -642,8 +642,8 @@ describe("resolveImportSites", () => {
     });
   });
 
-  it("consumer-type-import: element-level type modifier sets isTypeOnly=true", () => {
-    const sites = resolveImportSites(pkg.typeImport, CHANGED_PKG, [
+  it("consumer-type-import: element-level type modifier sets isTypeOnly=true", async () => {
+    const sites = await resolveImportSites(pkg.typeImport, CHANGED_PKG, [
       "User",
       "Role",
     ]);
@@ -661,8 +661,8 @@ describe("resolveImportSites", () => {
 
   // ── consumer-reexport ─────────────────────────────────────────────────────
 
-  it("consumer-reexport: named re-export has usageCount=0", () => {
-    const sites = resolveImportSites(pkg.reexport, CHANGED_PKG, [
+  it("consumer-reexport: named re-export has usageCount=0", async () => {
+    const sites = await resolveImportSites(pkg.reexport, CHANGED_PKG, [
       "User",
       "Role",
       "createUser",
@@ -678,8 +678,8 @@ describe("resolveImportSites", () => {
     });
   });
 
-  it("consumer-reexport: export type sets isTypeOnly=true with usageCount=0", () => {
-    const sites = resolveImportSites(pkg.reexport, CHANGED_PKG, [
+  it("consumer-reexport: export type sets isTypeOnly=true with usageCount=0", async () => {
+    const sites = await resolveImportSites(pkg.reexport, CHANGED_PKG, [
       "User",
       "Role",
       "createUser",
@@ -694,8 +694,8 @@ describe("resolveImportSites", () => {
     });
   });
 
-  it("consumer-reexport: aliased re-export records the exported-as name in localAlias", () => {
-    const sites = resolveImportSites(pkg.reexport, CHANGED_PKG, [
+  it("consumer-reexport: aliased re-export records the exported-as name in localAlias", async () => {
+    const sites = await resolveImportSites(pkg.reexport, CHANGED_PKG, [
       "User",
       "Role",
       "createUser",
@@ -714,8 +714,8 @@ describe("resolveImportSites", () => {
 
   // ── consumer-barrel ───────────────────────────────────────────────────────
 
-  it("consumer-barrel: export * emits one site per changed symbol with usageCount=0", () => {
-    const sites = resolveImportSites(pkg.barrel, CHANGED_PKG, [
+  it("consumer-barrel: export * emits one site per changed symbol with usageCount=0", async () => {
+    const sites = await resolveImportSites(pkg.barrel, CHANGED_PKG, [
       "User",
       "Role",
       "createUser",
@@ -740,8 +740,8 @@ describe("resolveImportSites", () => {
 
   // ── consumer-namespace ────────────────────────────────────────────────────
 
-  it("consumer-namespace: import * as Ns emits one site per changed symbol", () => {
-    const sites = resolveImportSites(pkg.namespace, CHANGED_PKG, [
+  it("consumer-namespace: import * as Ns emits one site per changed symbol", async () => {
+    const sites = await resolveImportSites(pkg.namespace, CHANGED_PKG, [
       "User",
       "createUser",
     ]);
@@ -762,21 +762,21 @@ describe("resolveImportSites", () => {
 
   // ── program cache ─────────────────────────────────────────────────────────
 
-  it("reuses the same ts.Program instance across multiple calls for the same package", () => {
+  it("reuses the same ts.Program instance across multiple calls for the same package", async () => {
     // Two calls for the same package should return the same results and not crash.
-    const first = resolveImportSites(pkg.direct, CHANGED_PKG, ["User"]);
-    const second = resolveImportSites(pkg.direct, CHANGED_PKG, ["User"]);
+    const first = await resolveImportSites(pkg.direct, CHANGED_PKG, ["User"]);
+    const second = await resolveImportSites(pkg.direct, CHANGED_PKG, ["User"]);
 
     expect(first).toHaveLength(1);
     expect(second).toHaveLength(1);
     expect(first[0]).toEqual(second[0]);
   });
 
-  it("clearProgramCache allows a fresh program to be built", () => {
-    resolveImportSites(pkg.direct, CHANGED_PKG, ["User"]);
+  it("clearProgramCache allows a fresh program to be built", async () => {
+    await resolveImportSites(pkg.direct, CHANGED_PKG, ["User"]);
     clearProgramCache();
     // Should not throw — rebuilds the program from scratch.
-    const sites = resolveImportSites(pkg.direct, CHANGED_PKG, ["User"]);
+    const sites = await resolveImportSites(pkg.direct, CHANGED_PKG, ["User"]);
     expect(sites).toHaveLength(1);
   });
 });
