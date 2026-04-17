@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
 import ts from "typescript";
-import { isMainThread } from "node:worker_threads";
 
 import type { ImportSite } from "../types/index.js";
 
@@ -64,41 +63,6 @@ export class ImportSiteResolver {
     changedSymbols: string[],
   ): Promise<ImportSite[]> {
     if (changedSymbols.length === 0) return [];
-
-    // When called from the main thread, we spawn a worker to handle the
-    // expensive TypeScript compiler operations. This fulfills the requirement
-    // for "thread safety" and "no shared mutable state".
-    if (isMainThread && typeof Worker !== "undefined") {
-      return new Promise((resolve, reject) => {
-        const workerPath = path.join(
-          path.dirname(import.meta.url).replace("file:", ""),
-          "import-resolver.worker.ts",
-        );
-
-        const worker = new Worker(workerPath);
-
-        worker.onmessage = (event) => {
-          const { sites, error } = event.data;
-          if (error) {
-            reject(new Error(error));
-          } else {
-            resolve(sites);
-          }
-          worker.terminate();
-        };
-
-        worker.onerror = (error) => {
-          reject(error);
-          worker.terminate();
-        };
-
-        worker.postMessage({
-          consumerPkgPath,
-          changedPackageName,
-          changedSymbols,
-        });
-      });
-    }
 
     const pkgJsonPath = path.join(consumerPkgPath, "package.json");
     if (!fs.existsSync(pkgJsonPath)) return [];
