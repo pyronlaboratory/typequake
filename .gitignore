@@ -143,3 +143,6 @@ vite.config.ts.timestamp-*
 # Project specific files
 typequake
 ./typequake
+
+# Benchmark fixtures
+tests/fixtures/benchmark

@@ -32,6 +32,10 @@ function serializeResult(result: AnalyzeResult) {
   // Reports are already severity-sorted by the pipeline.
   // Secondary sort by consumerPackage + symbol makes output fully deterministic
   // even if two pipeline runs process packages in a different order.
+  const packages = result.diffs.map((d) => ({
+    name: d.packageName,
+  }));
+
   const reports = [...result.reports]
     .sort((a, b) => {
       const pkg = a.consumerPackage.localeCompare(b.consumerPackage);
@@ -43,6 +47,7 @@ function serializeResult(result: AnalyzeResult) {
   return {
     version: 1,
     baseRef: result.baseRef,
+    packages,
     reports,
     summary: {
       total: result.reports.length,

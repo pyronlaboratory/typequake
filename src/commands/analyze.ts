@@ -105,15 +105,33 @@ export async function analyze(
     tracker.log();
   }
 
-  if (isCiMode(options.ci ?? false)) {
-    if (options.json) {
-      const { renderJson } = await import("../renderer/json");
-      renderJson(result);
+  // if (isCiMode(options.ci ?? false)) {
+  //   if (options.json) {
+  //     const { renderJson } = await import("../renderer/json");
+  //     renderJson(result);
+  //   }
+
+  //   runCiCheck(result!);
+  // }
+
+  // const { renderTerminal } = await import("../renderer/terminal");
+  // await renderTerminal(result!);
+
+  if (options.json) {
+    const { renderJson } = await import("../renderer/json");
+    renderJson(result);
+
+    if (isCiMode(options.ci ?? false)) {
+      runCiCheck(result);
     }
 
-    runCiCheck(result!);
+    return;
+  }
+
+  if (isCiMode(options.ci ?? false)) {
+    runCiCheck(result);
   }
 
   const { renderTerminal } = await import("../renderer/terminal");
-  await renderTerminal(result!);
+  await renderTerminal(result);
 }
