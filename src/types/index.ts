@@ -1,13 +1,16 @@
 import * as ts from "typescript";
 
+// ── CLI Options ─────────────────────────────────────────────────────────────
+
 export type AnalyzeOptions = {
   json?: boolean;
   ci?: boolean;
-  cache?: boolean; // from --no-cache
+  cache?: boolean; // disabled via --no-cache
   verbose?: boolean;
+  timing?: boolean;
 };
 
-// ── Workspace / Graph ─────────────────────────────────────────────────────────
+// ── Workspace Model ─────────────────────────────────────────────────────────
 
 export type DependencyGraph = Map<string, string[]>;
 
@@ -30,6 +33,8 @@ export interface WorkspaceGraph {
   packages: PackageNode[];
 }
 
+// ── Package Metadata ────────────────────────────────────────────────────────
+
 export interface PackageJson {
   name?: string;
   version?: string;
@@ -49,7 +54,7 @@ export interface PackageNode {
   dependencies: string[];
 }
 
-// ── Type Surface ──────────────────────────────────────────────────────────────
+// ── Type Surface Representation ─────────────────────────────────────────────
 
 export type SignatureMap = Map<string, TypeSignature>;
 
@@ -62,22 +67,26 @@ export interface PropertySignature {
 export interface TypeSignature {
   name: string;
   variant: "interface" | "type" | "function" | "class" | "variable" | "enum";
+
   /**
-   * Full type string produced by ts.TypeChecker.typeToString().
-   * Used as the primary diffable surface for non-structural comparison.
+   * Canonical type string produced by ts.TypeChecker.typeToString().
+   * Serves as the primary diffable surface for non-structural comparison.
    */
   typeString: string;
+
   /**
-   * ts.TypeFlags bitmask. Stored as a plain number so the record is
-   * JSON-serialisable without importing the TypeScript package at runtime.
+   * Raw ts.TypeFlags bitmask.
+   * Stored as a number to keep records JSON-serialisable without requiring
+   * the TypeScript runtime at load time.
    */
   flags: ts.TypeFlags;
+
   properties?: PropertySignature[];
   callSignatures?: string[];
   isExported: boolean;
 }
 
-// ── Mutation Records ───────────────────────────────────────────────────────
+// ── Mutation Classification ─────────────────────────────────────────────────
 
 export type TypeMutationClass =
   | "BREAKING"
@@ -94,7 +103,7 @@ export interface MutationRecord {
   detail: string;
 }
 
-// ── Import Sites Resolver ───────────────────────────────────────────────────
+// ── Import Usage Resolution ─────────────────────────────────────────────────
 
 export interface ImportSite {
   consumerPackage: string;
@@ -107,7 +116,7 @@ export interface ImportSite {
   isTypeOnly: boolean;
 }
 
-// ── Impact Report ────────────────────────────────────────────────────────────
+// ── Impact Reporting ────────────────────────────────────────────────────────
 
 export interface ImpactReport {
   mutationClass: TypeMutationClass;
@@ -117,16 +126,23 @@ export interface ImpactReport {
   detail: string;
 }
 
-// ── Git Bridge ——————————————────────────────────────────────────────────────
+// ── Git Diff Integration ────────────────────────────────────────────────────
 
 export type PackageDiffStatus = "changed" | "added" | "deleted" | "ignored";
 
 export interface PackageDiffResult {
   packageName: string;
   status: PackageDiffStatus;
+
   /** Populated for "changed" and "deleted". null for "added". */
   before: SignatureMap | null;
+
   /** Populated for "changed" and "added". null for "deleted". */
   after: SignatureMap | null;
+
   mutations: MutationRecord[];
 }
+
+// ── Performance Metrics ─────────────────────────────────────────────────────
+
+export type MetricName = "extraction" | "diff" | "traversal" | "total";

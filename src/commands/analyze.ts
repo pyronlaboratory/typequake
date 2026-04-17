@@ -6,6 +6,7 @@ import type {
 import { GitBridge } from "../core/git-bridge";
 import { generateReport } from "../core/impact-report";
 import { isCiMode, runCiCheck } from "../policies/enforcement";
+import { tracker } from "../utils/performance";
 
 export interface AnalyzeResult {
   baseRef: string;
@@ -31,20 +32,12 @@ export async function runPipeline(
   const bridge = new GitBridge(rootDir);
 
   const changedPackageNames = bridge.getChangedPackages(baseRef);
-  // Debug
-  // console.log("changed packages:", changedPackageNames);
 
   if (changedPackageNames.length === 0) {
     return { baseRef, diffs: [], reports: [] };
   }
 
   const { packages, graph } = bridge["scanner"].analyzeWorkspace();
-  // Debug
-  // console.log(
-  //   "total packages found:",
-  //   packages.map((p) => p.name),
-  // );
-  // console.log("graph:", Object.fromEntries(graph));
 
   const workspaceGraph = { graph, packages };
 
@@ -55,8 +48,6 @@ export async function runPipeline(
     if (!pkgNode) continue;
 
     const result = bridge.diffPackage(baseRef, pkgNode.path, options);
-    // Debug
-    // console.log(result.packageName, result.status, result.mutations.length);
     diffs.push(result);
   }
 
@@ -93,6 +84,10 @@ export async function analyze(
 ): Promise<void> {
   let result: AnalyzeResult;
 
+  if (options.timing) {
+    tracker.start();
+  }
+
   try {
     result = await runPipeline(baseRef, process.cwd(), options);
   } catch (err: any) {
@@ -100,6 +95,14 @@ export async function analyze(
       `typequake: analysis failed — ${err.message ?? err}\n`,
     );
     process.exit(1);
+  } finally {
+    if (options.timing) {
+      tracker.stop();
+    }
+  }
+
+  if (options.verbose && options.timing) {
+    tracker.log();
   }
 
   if (isCiMode(options.ci ?? false)) {
@@ -108,10 +111,6 @@ export async function analyze(
       renderJson(result);
     }
 
-    // console.log(
-    //   "CI mode active, breaking:",
-    //   result!.reports.filter((r) => r.mutationClass === "BREAKING").length,
-    // );
     runCiCheck(result!);
   }
 

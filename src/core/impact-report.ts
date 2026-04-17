@@ -7,6 +7,7 @@ import type {
 } from "../types/index";
 import { resolveImportSites } from "./import-resolver.js";
 import { getTransitiveDependents } from "./transitive-dependents.js";
+import { tracker } from "../utils/performance";
 
 const SEVERITY_ORDER: Record<TypeMutationClass, number> = {
   BREAKING: 0,
@@ -22,20 +23,10 @@ export async function generateReport(
   workspaceGraph: WorkspaceGraph,
 ): Promise<ImpactReport[]> {
   if (mutations.length === 0) return [];
-  // Debug
-  // console.log(
-  //   "mutations for",
-  //   modifiedPackage,
-  //   "→",
-  //   mutations.map((m) => m.symbolName),
-  // );
 
-  const consumers = getTransitiveDependents(
-    modifiedPackage,
-    workspaceGraph.graph,
+  const consumers = tracker.track("traversal", () =>
+    getTransitiveDependents(modifiedPackage, workspaceGraph.graph),
   );
-  // Debug
-  // console.log("consumers of", modifiedPackage, "→", consumers.length);
 
   if (consumers.length === 0) return [];
 
@@ -54,12 +45,9 @@ export async function generateReport(
       );
       if (!consumerNode) return [];
 
-      const sites = await resolveImportSites(
-        consumerNode.path,
-        modifiedPackage,
-        changedSymbols,
+      const sites = await tracker.trackAsync("traversal", () =>
+        resolveImportSites(consumerNode.path, modifiedPackage, changedSymbols),
       );
-      // console.log("  sites in", consumerName, "→", sites.length);
 
       return sites;
     }),

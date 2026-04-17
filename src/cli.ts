@@ -42,6 +42,7 @@ program
   .option("--ci", "Exit with non-zero code if breaking changes are detected")
   .option("--no-cache", "Disable caching of analysis results")
   .option("--verbose", "Enable verbose logging")
+  .option("--timing", "Log performance timing metrics")
   .action(async (baseRef, options) => {
     await analyze(baseRef, options);
   });
