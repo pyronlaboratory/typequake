@@ -54,7 +54,7 @@ export async function generateReport(
       );
       if (!consumerNode) return [];
 
-      const sites = resolveImportSites(
+      const sites = await resolveImportSites(
         consumerNode.path,
         modifiedPackage,
         changedSymbols,
