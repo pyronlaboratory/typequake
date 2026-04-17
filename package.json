@@ -10,8 +10,8 @@
     "start:dev": "bun run src/cli.ts",
     "build": "bun run src/scripts/build.ts",
     "bundle": "bun build src/cli.ts --outdir dist --target=node",
-    "test": "vitest",
-    "coverage": "vitest run --coverage"
+    "test": "vitest --config vitest.config.ts",
+    "coverage": "vitest --config vitest.coverage.config.ts --coverage"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
