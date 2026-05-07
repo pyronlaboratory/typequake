@@ -253,9 +253,11 @@ describe("full pipeline — generateReport integration", () => {
     const scanner = new WorkspaceScanner(FIXTURE_ROOT);
     const { packages, graph } = scanner.analyzeWorkspace();
 
-    await expect(
-      generateReport("@fixture/new", result.mutations, { packages, graph }),
-    ).resolves.not.toThrow();
+    const reports = await generateReport("@fixture/new", result.mutations, {
+      packages,
+      graph,
+    });
+    expect(Array.isArray(reports)).toBe(true);
   });
 
   it("generateReport does not throw for deleted package mutations", async () => {
@@ -268,9 +270,11 @@ describe("full pipeline — generateReport integration", () => {
     const scanner = new WorkspaceScanner(FIXTURE_ROOT);
     const { packages, graph } = scanner.analyzeWorkspace();
 
-    await expect(
-      generateReport("@fixture/legacy", result.mutations, { packages, graph }),
-    ).resolves.not.toThrow();
+    const reports = await generateReport("@fixture/legacy", result.mutations, {
+      packages,
+      graph,
+    });
+    expect(Array.isArray(reports)).toBe(true);
   });
 });
 

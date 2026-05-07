@@ -101,7 +101,7 @@ afterAll(() => {
   fs.rmSync(FIXTURE_ROOT, { recursive: true, force: true });
 });
 
-describe("GitBridge.extractTypeSnapshotAtRef", () => {
+describe("GitBridge.snap", () => {
   it("returns a SignatureMap with exported symbols", () => {
     const bridge = new GitBridge(FIXTURE_ROOT);
     const pkgPath = path.join(FIXTURE_ROOT, "packages/alpha");

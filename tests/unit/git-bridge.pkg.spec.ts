@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { execSync } from "child_process";
-import { GitBridge } from "../../src/core/git-bridge.js";
+import { GitBridge } from "../../src/core/git-bridge";
 
 const FIXTURE_ROOT = path.join(os.tmpdir(), "fixtures/git-bridge-extract-ref");
 
@@ -83,7 +83,7 @@ afterAll(() => {
   fs.rmSync(FIXTURE_ROOT, { recursive: true, force: true });
 });
 
-describe("GitBridge.extractPackageAtRef", () => {
+describe("GitBridge.pkg", () => {
   it("mirrors all tracked files into temp dir", () => {
     const bridge = new GitBridge(FIXTURE_ROOT);
     const pkgPath = path.join(FIXTURE_ROOT, "packages/alpha");

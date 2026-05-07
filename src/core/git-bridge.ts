@@ -33,7 +33,7 @@ function normalisePath(p: string): string {
 /**
  * Given a normalised relative file path and the list of known workspace
  * packages (each with an absolute `path`), return the package whose directory
- * is the longest prefix of the file — i.e. the most-specific match.
+ * is the longest prefix of the file i.e. the most-specific match.
  *
  * Returns `null` for files that belong to no package (e.g. root-level files).
  */

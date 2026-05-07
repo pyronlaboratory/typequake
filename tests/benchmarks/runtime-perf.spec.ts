@@ -226,7 +226,7 @@ describe("Runtime Performance – 20-package workspace", () => {
           `  │  Budget           : ${String(BUDGET_MS).padStart(6)} ms                              │`,
           `  │  Headroom         : ${(BUDGET_MS - elapsed).toFixed(0).padStart(6)} ms                              │`,
           `  │  Packages scanned : ${String(20).padStart(4)}                                   │`,
-          `  │  Packages changed : ${String(changedPkg.length).padStart(4)}                                   │`,
+          `  │  Packages changed : ${String(changedPkg.length).padStart(4)}                              │`,
           "  └────────────────────────────────────────────────────────────┘",
           "",
         ].join("\n"),

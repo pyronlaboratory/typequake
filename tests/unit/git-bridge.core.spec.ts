@@ -3,7 +3,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { execSync } from "child_process";
-import { GitBridge } from "../../src/core/git-bridge.js";
+import { GitBridge } from "../../src/core/git-bridge";
 
 const FIXTURE_ROOT = path.join(os.tmpdir(), "fixtures/git-bridge");
 // const FIXTURE_ROOT = path.resolve(import.meta.dirname, "fixtures/git-bridge");
@@ -104,7 +104,7 @@ function withWorkingTreeChanges(
   }
 }
 
-describe("GitBridge.getChangedPackages", () => {
+describe("GitBridge.core", () => {
   it("returns empty array when nothing changed", () => {
     const bridge = new GitBridge(FIXTURE_ROOT);
     // No working-tree changes → diff against HEAD is empty
