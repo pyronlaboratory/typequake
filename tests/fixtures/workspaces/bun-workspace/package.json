@@ -1,7 +1,0 @@
-{
-  "name": "bun-fixture-root",
-  "private": true,
-  "workspaces": [
-    "packages/*"
-  ]
-}

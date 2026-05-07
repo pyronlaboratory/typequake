@@ -3,8 +3,8 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { execSync } from "child_process";
-import { GitBridge } from "../../src/core/git-bridge.js";
-import { TypeSurfaceExtractor } from "../../src/core/type-surface.js";
+import { GitBridge } from "../../src/core/git-bridge";
+import { TypeSurfaceExtractor } from "../../src/core/extract-types";
 
 const FIXTURE_ROOT = path.join(
   os.tmpdir(),

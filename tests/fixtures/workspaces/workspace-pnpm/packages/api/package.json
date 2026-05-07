@@ -1,0 +1,5 @@
+{
+  "name": "@pkg/api",
+  "version": "1.0.0",
+  "dependencies": { "@pkg/core": "workspace:*" }
+}

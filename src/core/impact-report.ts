@@ -6,7 +6,7 @@ import type {
   WorkspaceGraph,
 } from "../types/index";
 import { resolveImportSites } from "./import-resolver.js";
-import { getTransitiveDependents } from "./transitive-dependents.js";
+import { getTransitiveDependents } from "./trace-deps.js";
 import { tracker } from "../utils/performance";
 
 const SEVERITY_ORDER: Record<TypeMutationClass, number> = {

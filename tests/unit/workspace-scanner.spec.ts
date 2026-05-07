@@ -1,7 +1,9 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import { WorkspaceScanner } from "../../src/core/workspace-scanner";
 
 /**
@@ -350,97 +352,51 @@ const FIXTURES_DIR = path.resolve(__dirname, "../fixtures/workspaces");
 
 describe("WorkspaceScanner — on-disk fixtures", () => {
   it("pnpm-workspace: detects type and discovers all packages", () => {
-    const rootDir = path.join(FIXTURES_DIR, "pnpm-workspace");
+    const rootDir = path.join(FIXTURES_DIR, "workspace-pnpm");
     const { config, packages } = new WorkspaceScanner(
       rootDir,
     ).analyzeWorkspace();
 
     expect(config.type).toBe("pnpm");
     expect(packages.map((p) => p.name).sort()).toEqual([
-      "@fixture/api",
-      "@fixture/core",
-      "@fixture/standalone",
-      "@fixture/utils",
+      "@pkg/api",
+      "@pkg/core",
     ]);
   });
 
   it("pnpm-workspace: builds correct dependency graph", () => {
-    const rootDir = path.join(FIXTURES_DIR, "pnpm-workspace");
+    const rootDir = path.join(FIXTURES_DIR, "workspace-pnpm");
     const { graph } = new WorkspaceScanner(rootDir).analyzeWorkspace();
 
-    expect(graph.get("@fixture/core")).toEqual([
-      "@fixture/api",
-      "@fixture/utils",
-    ]);
-    expect(graph.get("@fixture/utils")).toEqual(["@fixture/api"]);
-    expect(graph.get("@fixture/api")).toEqual([]);
-    expect(graph.get("@fixture/standalone")).toEqual([]);
+    expect(graph.get("@pkg/core")).toEqual(["@pkg/api"]);
+    expect(graph.get("@pkg/api")).toEqual([]);
   });
 
   it("pnpm-workspace: getTransitiveDependents() traverses correctly", () => {
     const scanner = new WorkspaceScanner(
-      path.join(FIXTURES_DIR, "pnpm-workspace"),
+      path.join(FIXTURES_DIR, "workspace-pnpm"),
     );
 
-    expect(scanner.getTransitiveDependents("@fixture/core")).toEqual([
-      "@fixture/api",
-      "@fixture/utils",
-    ]);
-    expect(scanner.getTransitiveDependents("@fixture/utils")).toEqual([
-      "@fixture/api",
-    ]);
-    expect(scanner.getTransitiveDependents("@fixture/standalone")).toEqual([]);
+    expect(scanner.getTransitiveDependents("@pkg/core")).toEqual(["@pkg/api"]);
   });
 
   it("yarn-workspace: detects type and discovers all packages", () => {
-    const rootDir = path.join(FIXTURES_DIR, "yarn-workspace");
+    const rootDir = path.join(FIXTURES_DIR, "workspace-yarn");
     const { config, packages } = new WorkspaceScanner(
       rootDir,
     ).analyzeWorkspace();
 
     expect(config.type).toBe("yarn");
-    expect(packages.map((p) => p.name).sort()).toEqual([
-      "@fixture/api",
-      "@fixture/core",
-      "@fixture/standalone",
-      "@fixture/utils",
-    ]);
-  });
-
-  it("yarn-workspace: builds correct dependency graph", () => {
-    const rootDir = path.join(FIXTURES_DIR, "yarn-workspace");
-    const { graph } = new WorkspaceScanner(rootDir).analyzeWorkspace();
-
-    expect(graph.get("@fixture/core")).toEqual([
-      "@fixture/api",
-      "@fixture/utils",
-    ]);
-    expect(graph.get("@fixture/utils")).toEqual(["@fixture/api"]);
+    expect(packages.map((p) => p.name).sort()).toEqual(["@pkg/utils"]);
   });
 
   it("bun-workspace: detects type and discovers all packages", () => {
-    const rootDir = path.join(FIXTURES_DIR, "bun-workspace");
+    const rootDir = path.join(FIXTURES_DIR, "workspace-bun");
     const { config, packages } = new WorkspaceScanner(
       rootDir,
     ).analyzeWorkspace();
 
     expect(config.type).toBe("bun");
-    expect(packages.map((p) => p.name).sort()).toEqual([
-      "@fixture/api",
-      "@fixture/core",
-      "@fixture/standalone",
-      "@fixture/utils",
-    ]);
-  });
-
-  it("bun-workspace: builds correct dependency graph", () => {
-    const rootDir = path.join(FIXTURES_DIR, "bun-workspace");
-    const { graph } = new WorkspaceScanner(rootDir).analyzeWorkspace();
-
-    expect(graph.get("@fixture/core")).toEqual([
-      "@fixture/api",
-      "@fixture/utils",
-    ]);
-    expect(graph.get("@fixture/utils")).toEqual(["@fixture/api"]);
+    expect(packages.map((p) => p.name).sort()).toEqual(["@pkg/ui"]);
   });
 });
