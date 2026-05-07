@@ -2,6 +2,7 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import ts from "typescript";
+
 import {
   describe,
   it,
@@ -12,13 +13,8 @@ import {
   afterEach,
 } from "vitest";
 
-import { TypeSurfaceExtractor } from "../../src/core/type-surface.js";
-import {
-  readCache,
-  writeCache,
-  deleteCache,
-  getCacheKey,
-} from "../../src/utils/cache.js";
+import { TypeSurfaceExtractor } from "../../src/core/extract-types";
+import { readCache, writeCache, getCacheKey } from "../../src/utils/cache.js";
 import type { SignatureMap } from "../../src/types/index.js";
 
 const FIXTURES = path.resolve(import.meta.dirname, "../fixtures/definitions");

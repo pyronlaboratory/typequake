@@ -6,7 +6,7 @@ import { execSync } from "child_process";
 import { GitBridge } from "../../src/core/git-bridge.js";
 import { generateReport } from "../../src/core/impact-report.js";
 import { WorkspaceScanner } from "../../src/core/workspace-scanner.js";
-import { TypeSurfaceExtractor } from "../../src/core/type-surface.js";
+import { TypeSurfaceExtractor } from "../../src/core/extract-types";
 
 /**
  * Full pipeline integration test.

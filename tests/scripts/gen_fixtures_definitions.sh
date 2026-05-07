@@ -28,7 +28,9 @@ EOF
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowJs": true,
+    "noEmit": true
   }
 }
 EOF

@@ -13,9 +13,9 @@ import { getCacheKey, readCache, writeCache } from "../utils/cache.ts";
 const programCache = new Map<string, ts.Program>();
 
 /**
- * Ordered list of package.json fields to inspect when locating the TypeScript
- * entry point of a package.  We prefer explicit type declarations over the
- * compiled JS `main` field.
+ * Ordered list of package.json fields to inspect when locating the TS
+ * entry point of a package. We prefer explicit type declarations over
+ * the compiled JS `main` field.
  */
 function resolveEntryPoint(
   packagePath: string,
@@ -24,7 +24,6 @@ function resolveEntryPoint(
   const candidates: (string | undefined)[] = [
     pkgJson.types,
     pkgJson.typings,
-    // exports map — supports { ".": { "types": "./dist/index.d.ts" } }
     (pkgJson.exports as any)?.["."]?.types,
     (pkgJson.exports as any)?.types,
     pkgJson.main,
@@ -172,10 +171,10 @@ function serializeSymbol(
   const declarations = sym.getDeclarations();
   if (!declarations || declarations.length === 0) return null;
 
-  // Re-exported symbols (e.g. `export type { Foo } from "./other"`) have their
-  // first declaration as an ExportSpecifier pointing back to this file's
-  // re-export statement, not to the original declaration.  Resolve through the
-  // alias so we get the real interface/type/class node.
+  // Re-exported symbols (e.g. `export type { Foo } from "./other"`) have
+  // their first declaration as an ExportSpecifier pointing back to this
+  // file's re-export statement, not to the original declaration. Resolve
+  // through the alias so we get the real interface/type/class node.
   let resolvedSym = sym;
   if (ts.isExportSpecifier(declarations[0]!)) {
     // istanbul ignore next
@@ -253,10 +252,7 @@ function getProgram(entryPoint: string, options: ts.CompilerOptions) {
 }
 
 export class TypeSurfaceExtractor {
-  constructor(
-    /** Monorepo root — used to locate `.typequake/cache/`. */
-    private readonly rootDir: string,
-  ) {}
+  constructor(private readonly rootDir: string) {}
 
   /**
    * Extract the full exported type surface of a package.
@@ -266,11 +262,7 @@ export class TypeSurfaceExtractor {
    *                     caching is skipped entirely for this call.
    * @param useCache     Whether to use the disk cache. Defaults to true.
    */
-  extract(
-    packagePath: string,
-    gitSha?: string,
-    useCache = true,
-  ): SignatureMap {
+  extract(packagePath: string, gitSha?: string, useCache = true): SignatureMap {
     const pkgJsonPath = path.join(packagePath, "package.json");
     if (!fs.existsSync(pkgJsonPath)) {
       throw new Error(`No package.json found at ${packagePath}`);
@@ -310,7 +302,7 @@ export class TypeSurfaceExtractor {
     const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
 
     if (moduleSymbol) {
-      // Standard ES-module path — the checker gives us the module symbol
+      // Standard ES-module path, the checker gives us the module symbol
       // whose exports() list is the canonical set of public symbols.
       for (const sym of checker.getExportsOfModule(moduleSymbol)) {
         const sig = serializeSymbol(sym, checker);
@@ -341,7 +333,7 @@ export class TypeSurfaceExtractor {
   }
 }
 
-// ── script-mode fallback ——————————————————————————————————————————————————————
+// Script-mode fallback
 
 // istanbul ignore next
 function isExportedStatement(node: ts.Statement): boolean {
