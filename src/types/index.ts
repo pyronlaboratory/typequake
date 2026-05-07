@@ -66,7 +66,7 @@ export interface PropertySignature {
 
 export interface TypeSignature {
   name: string;
-  variant: "interface" | "type" | "function" | "class" | "variable" | "enum";
+  variant: "interface" | "type" | "function" | "class" | "variable" | "enum" | "namespace";
 
   /**
    * Canonical type string produced by ts.TypeChecker.typeToString().

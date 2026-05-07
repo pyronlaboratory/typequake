@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { generateReport } from "../../src/core/impact-report";
 import type {
   MutationRecord,
@@ -12,7 +12,7 @@ vi.mock("../../src/core/import-resolver", () => ({
 }));
 
 import { resolveImportSites } from "../../src/core/import-resolver";
-const mockResolveImportSites = vi.mocked(resolveImportSites);
+const mockResolveImportSites = resolveImportSites as Mock;
 
 // ── fixtures ──────────────────────────────────────────────────────────────────
 

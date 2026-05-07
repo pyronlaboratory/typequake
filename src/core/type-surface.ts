@@ -72,12 +72,24 @@ function loadTsconfigContent(packagePath: string): string {
 function loadCompilerOptions(packagePath: string): ts.CompilerOptions {
   const tsconfigPath = path.join(packagePath, "tsconfig.json");
   if (!fs.existsSync(tsconfigPath)) {
-    return { noEmit: true, skipLibCheck: true, strict: true };
+    return {
+      noEmit: true,
+      skipLibCheck: true,
+      strict: true,
+      allowJs: true,
+      checkJs: true,
+    };
   }
 
   const configFile = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
   if (configFile.error) {
-    return { noEmit: true, skipLibCheck: true, strict: true };
+    return {
+      noEmit: true,
+      skipLibCheck: true,
+      strict: true,
+      allowJs: true,
+      checkJs: true,
+    };
   }
 
   const parsed = ts.parseJsonConfigFileContent(
@@ -86,7 +98,12 @@ function loadCompilerOptions(packagePath: string): ts.CompilerOptions {
     path.dirname(tsconfigPath),
   );
 
-  return { ...parsed.options, noEmit: true };
+  return {
+    ...parsed.options,
+    noEmit: true,
+    allowJs: true,
+    checkJs: true,
+  };
 }
 
 function variantFromDeclaration(
@@ -97,6 +114,7 @@ function variantFromDeclaration(
   if (ts.isTypeAliasDeclaration(decl)) return "type";
   if (ts.isClassDeclaration(decl)) return "class";
   if (ts.isEnumDeclaration(decl)) return "enum";
+  if (ts.isModuleDeclaration(decl)) return "namespace";
   if (
     ts.isFunctionDeclaration(decl) ||
     ts.isMethodDeclaration(decl) ||
