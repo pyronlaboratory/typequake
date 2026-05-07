@@ -11,7 +11,7 @@ import type {
 } from "../types/index";
 import { WorkspaceScanner } from "./workspace-scanner";
 import { TypeSurfaceExtractor } from "./extract-types";
-import { diff as diffSignatures } from "./semantic-differ.js";
+import { diff as diffSignatures } from "./analyze-mutations";
 import { tracker } from "../utils/performance";
 
 function runGit(args: string, cwd: string): string {

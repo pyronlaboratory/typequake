@@ -7,7 +7,7 @@ import {
   ruleNarrowing,
   ruleRemoved,
   ruleWidening,
-} from "../../src/core/semantic-differ";
+} from "../../src/core/analyze-mutations";
 import type { SignatureMap, TypeSignature } from "../../src/types";
 
 function createSig(

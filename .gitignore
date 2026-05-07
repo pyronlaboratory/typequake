@@ -147,3 +147,4 @@ typequake
 # Benchmark fixtures
 tests/fixtures/benchmark
 tests/fixtures/definitions
+tests/fixtures/workspaces

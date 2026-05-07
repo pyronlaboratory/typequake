@@ -9,11 +9,10 @@ import {
   nearestPackageName,
   specifierResolvesToPackage,
   clearProgramCache,
-} from "../../src/core/import-resolver";
+} from "../../src/core/resolve-imports";
 import type { ImportSite } from "../../src/types/index";
 
-const FIXTURES = path.resolve(__dirname, "../fixtures/import-resolver");
-
+const FIXTURES = path.resolve(__dirname, "../fixtures/references");
 const pkg = {
   direct: path.join(FIXTURES, "consumer-direct"),
   aliased: path.join(FIXTURES, "consumer-aliased"),
@@ -151,8 +150,7 @@ describe("specifierResolvesToPackage", () => {
 });
 
 describe("extractSitesFromFile", () => {
-  // ── named imports ──────────────────────────────────────────────────────────
-
+  // Named imports
   it("records a named import with no alias — line/col point at the local binding", () => {
     // Probed: symbol=User  line=1 col=10
     const src = `import { User, createUser } from '@tq/core';\n\nconst a: User = createUser('alice');\nconst b: User = createUser('bob');\n`;
@@ -230,8 +228,7 @@ describe("extractSitesFromFile", () => {
     expect(sites).toHaveLength(0);
   });
 
-  // ── aliased imports ────────────────────────────────────────────────────────
-
+  // Aliased imports
   it("records symbolName as the exported name and localAlias as the local binding", () => {
     // Probed: symbol=User local=U  line=1 col=18  usages=1
     const src = `import { User as U, Role } from '@tq/core';\n\nconst a: U = { id: 1, name: 'x' };\nconst r: Role = 'admin';\n`;
@@ -278,8 +275,7 @@ describe("extractSitesFromFile", () => {
     });
   });
 
-  // ── type-only imports ──────────────────────────────────────────────────────
-
+  // Type-only imports
   it("sets isTypeOnly=true for a clause-level import type { … }", () => {
     // Probed: User  line=1 col=15  usages=1  clauseTypeOnly=true
     const src = `import type { User } from '@tq/core';\n\nfunction greet(u: User): string {\n  return u.name;\n}\n`;
@@ -340,8 +336,7 @@ describe("extractSitesFromFile", () => {
     expect(sites[0]?.isTypeOnly).toBe(false);
   });
 
-  // ── re-exports ─────────────────────────────────────────────────────────────
-
+  // Re-exports
   it("records a named re-export with usageCount=0", () => {
     // Probed: symbol=User  line=1 col=10  typeOnly=false
     const src = `export { User } from '@tq/core';\n`;
@@ -422,8 +417,7 @@ describe("extractSitesFromFile", () => {
     });
   });
 
-  // ── export * (barrel) ──────────────────────────────────────────────────────
-
+  // Barrel export
   it("emits one site per changed symbol for export * with usageCount=0", () => {
     // Probed: moduleSpecifier start  line=1 col=15
     const src = `export * from '@tq/core';\n`;
@@ -477,8 +471,7 @@ describe("extractSitesFromFile", () => {
     }
   });
 
-  // ── namespace import ───────────────────────────────────────────────────────
-
+  // Namespace import
   it("records one site per changed symbol for import * as Ns with namespace as localAlias", () => {
     // Probed: Core  line=1 col=13  usages=2
     const src = `import * as Core from '@tq/core';\n\nconst u: Core.User = Core.createUser('alice');\n`;
@@ -513,15 +506,16 @@ describe("resolveImportSites", () => {
     clearProgramCache();
   });
 
-  // ── edge cases ─────────────────────────────────────────────────────────────
-
+  // Edge cases
   it("returns [] when changedSymbols is empty", async () => {
     expect(await resolveImportSites(pkg.direct, CHANGED_PKG, [])).toEqual([]);
   });
 
   it("returns [] when the consumer package has no package.json", async () => {
     const nonexistent = path.join(FIXTURES, "__no_such_package__");
-    expect(await resolveImportSites(nonexistent, CHANGED_PKG, ["User"])).toEqual([]);
+    expect(
+      await resolveImportSites(nonexistent, CHANGED_PKG, ["User"]),
+    ).toEqual([]);
   });
 
   it("returns [] when the consumer does not import any changed symbol", async () => {
@@ -532,8 +526,7 @@ describe("resolveImportSites", () => {
     expect(sites).toEqual([]);
   });
 
-  // ── consumer-direct ────────────────────────────────────────────────────────
-
+  // Consumer-direct
   it("finds both named imports in consumer-direct", async () => {
     const sites = await resolveImportSites(pkg.direct, CHANGED_PKG, [
       "User",
@@ -586,8 +579,7 @@ describe("resolveImportSites", () => {
     expect(sites[0]!.filePath.startsWith(pkg.direct)).toBe(true);
   });
 
-  // ── consumer-aliased ───────────────────────────────────────────────────────
-
+  // Consumer-aliased
   it("consumer-aliased: User is recorded with localAlias='U'", async () => {
     const sites = await resolveImportSites(pkg.aliased, CHANGED_PKG, [
       "User",
@@ -623,8 +615,7 @@ describe("resolveImportSites", () => {
     });
   });
 
-  // ── consumer-type-import ───────────────────────────────────────────────────
-
+  // Consumer-type-import
   it("consumer-type-import: clause-level import type sets isTypeOnly=true", async () => {
     const sites = await resolveImportSites(pkg.typeImport, CHANGED_PKG, [
       "User",
@@ -659,8 +650,7 @@ describe("resolveImportSites", () => {
     });
   });
 
-  // ── consumer-reexport ─────────────────────────────────────────────────────
-
+  // Consumer-reexport
   it("consumer-reexport: named re-export has usageCount=0", async () => {
     const sites = await resolveImportSites(pkg.reexport, CHANGED_PKG, [
       "User",
@@ -712,8 +702,7 @@ describe("resolveImportSites", () => {
     });
   });
 
-  // ── consumer-barrel ───────────────────────────────────────────────────────
-
+  // Consumer-barrel
   it("consumer-barrel: export * emits one site per changed symbol with usageCount=0", async () => {
     const sites = await resolveImportSites(pkg.barrel, CHANGED_PKG, [
       "User",
@@ -738,8 +727,7 @@ describe("resolveImportSites", () => {
     expect(names).toEqual(["Role", "User", "createUser"].sort());
   });
 
-  // ── consumer-namespace ────────────────────────────────────────────────────
-
+  // Consumer-namespace
   it("consumer-namespace: import * as Ns emits one site per changed symbol", async () => {
     const sites = await resolveImportSites(pkg.namespace, CHANGED_PKG, [
       "User",
@@ -760,8 +748,7 @@ describe("resolveImportSites", () => {
     }
   });
 
-  // ── program cache ─────────────────────────────────────────────────────────
-
+  // Program cache
   it("reuses the same ts.Program instance across multiple calls for the same package", async () => {
     // Two calls for the same package should return the same results and not crash.
     const first = await resolveImportSites(pkg.direct, CHANGED_PKG, ["User"]);

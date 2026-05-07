@@ -5,8 +5,8 @@ import type {
   TypeMutationClass,
   WorkspaceGraph,
 } from "../types/index";
-import { resolveImportSites } from "./import-resolver.js";
-import { getTransitiveDependents } from "./trace-deps.js";
+import { resolveImportSites } from "./resolve-imports";
+import { getTransitiveDependents } from "./trace-deps";
 import { tracker } from "../utils/performance";
 
 const SEVERITY_ORDER: Record<TypeMutationClass, number> = {

@@ -4,7 +4,7 @@ import path from "path";
 import os from "os";
 import { execSync } from "child_process";
 import { GitBridge } from "../../src/core/git-bridge.js";
-import { generateReport } from "../../src/core/impact-report.js";
+import { generateReport } from "../../src/core/generate-report.js";
 import { WorkspaceScanner } from "../../src/core/workspace-scanner.js";
 import { TypeSurfaceExtractor } from "../../src/core/extract-types";
 

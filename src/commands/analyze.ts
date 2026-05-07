@@ -4,7 +4,7 @@ import type {
   PackageDiffResult,
 } from "../types/index";
 import { GitBridge } from "../core/git-bridge";
-import { generateReport } from "../core/impact-report";
+import { generateReport } from "../core/generate-report";
 import { isCiMode, runCiCheck } from "../policies/enforcement";
 import { tracker } from "../utils/performance";
 

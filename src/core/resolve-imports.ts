@@ -1,8 +1,7 @@
 import fs from "fs";
 import path from "path";
 import ts from "typescript";
-
-import type { ImportSite } from "../types/index.js";
+import type { ImportSite } from "../types/index";
 
 /**
  * One ts.Program per consumer package path.  Re-using a single program for

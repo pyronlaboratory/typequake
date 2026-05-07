@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
-import { generateReport } from "../../src/core/impact-report";
+import { generateReport } from "../../src/core/generate-report";
 import type {
   MutationRecord,
   ImportSite,
@@ -7,15 +7,14 @@ import type {
 } from "../../src/types/index";
 
 // Mock import-resolver so tests don't need real TS programs on disk
-vi.mock("../../src/core/import-resolver", () => ({
+vi.mock("../../src/core/resolve-imports", () => ({
   resolveImportSites: vi.fn(),
 }));
 
-import { resolveImportSites } from "../../src/core/import-resolver";
+import { resolveImportSites } from "../../src/core/resolve-imports";
 const mockResolveImportSites = resolveImportSites as Mock;
 
-// ── fixtures ──────────────────────────────────────────────────────────────────
-
+// In-memory fixtures
 function makeGraph(
   packages: Array<{ name: string; path: string; dependsOn?: string[] }>,
   changedPkg: string,
@@ -64,8 +63,6 @@ function makeBreakingMutation(symbolName = "UserRecord"): MutationRecord {
     detail: `required property 'id' removed from ${symbolName}`,
   };
 }
-
-// ── tests ─────────────────────────────────────────────────────────────────────
 
 describe("generateReport", () => {
   beforeEach(() => {
@@ -173,7 +170,7 @@ describe("generateReport", () => {
     // @repo/dashboard imports the ADDITIVE symbol
     mockResolveImportSites.mockImplementation((_path, _pkg, symbols) => {
       // Return a site matching whatever symbol was requested
-      return symbols.map((sym) =>
+      return symbols.map((sym: any) =>
         makeSite({ consumerPackage: _path, symbolName: sym }),
       );
     });
