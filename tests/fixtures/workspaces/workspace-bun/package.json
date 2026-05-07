@@ -1,5 +1,0 @@
-{
-  "name": "bun-workspace",
-  "private": true,
-  "workspaces": ["packages/*"]
-}
