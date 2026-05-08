@@ -19,7 +19,7 @@ const program = new Command();
 program
   .name("typequake")
   .description("Semantic analysis of type changes and their downstream impact")
-  .version("0.1.0", "-v, --version")
+  .version("1.0.0", "-v, --version")
   .addHelpText(
     "after",
     `

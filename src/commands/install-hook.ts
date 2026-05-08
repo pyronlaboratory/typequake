@@ -2,7 +2,7 @@ import { chmodSync, existsSync, writeFileSync } from "fs";
 import { join } from "path";
 
 const HOOK_SCRIPT = `#!/bin/sh
-# Installed by typequake — do not edit this line
+# Managed by typequake. Please do not remove this file or header.
 typequake $(git rev-parse --abbrev-ref HEAD@{upstream} 2>/dev/null || echo "HEAD~1")
 `;
 
