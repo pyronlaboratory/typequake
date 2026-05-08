@@ -1,5 +1,6 @@
 {
   "name": "typequake",
+  "version": "1.0.0",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -10,30 +11,33 @@
     "start:dev": "bun run src/cli.ts",
     "build": "bun run src/scripts/build.ts",
     "bundle": "bun build src/cli.ts --outdir dist --target=node",
-    "test": "vitest --config vitest.config.ts",
+    "test": "vitest --config vitest.dev.config.ts",
     "coverage": "vitest --config vitest.coverage.config.ts --coverage",
-    "bench": "vitest run --config vitest.bench.config.ts"
+    "bench": "vitest --config vitest.bench.config.ts"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
+    "@eslint/js": "10.0.1",
     "@types/bun": "latest",
-    "@types/node": "^25.5.0",
-    "@types/react": "^19.2.14",
+    "@types/node": "25.6.2",
+    "@types/react": "19.2.14",
     "@vitest/coverage-v8": "4.1.1",
-    "eslint": "^10.1.0",
-    "globals": "^17.4.0",
-    "jiti": "^2.6.1",
+    "eslint": "10.3.0",
+    "globals": "17.6.0",
+    "jiti": "2.7.0",
     "react-devtools-core": "7.0.1",
-    "typescript-eslint": "^8.57.2",
-    "vitest": "^4.1.1"
+    "typescript-eslint": "8.59.2",
+    "vitest": "4.1.5"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "5.9.3"
   },
   "dependencies": {
-    "react": "^19.2.4",
-    "commander": "^14.0.3",
-    "ink": "^6.8.0",
-    "yaml": "^2.8.3"
+    "react": "19.2.6",
+    "commander": "14.0.3",
+    "ink": "6.8.0",
+    "yaml": "2.8.4"
+  },
+  "overrides": {
+    "vite": "^8.0.5"
   }
 }

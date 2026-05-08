@@ -2,6 +2,11 @@ import path from "path";
 import os from "os";
 import fs from "fs";
 import { execSync } from "child_process";
+
+import { WorkspaceScanner } from "./workspace-scanner";
+import { TypeSurfaceExtractor } from "./extract-types";
+import { diff as diffSignatures } from "./analyze-mutations";
+import { tracker } from "../utils/performance";
 import type {
   AnalyzeOptions,
   MutationRecord,
@@ -9,11 +14,6 @@ import type {
   PackageNode,
   SignatureMap,
 } from "../types/index";
-import { WorkspaceScanner } from "./workspace-scanner";
-import { TypeSurfaceExtractor } from "./type-surface";
-import { diff as diffSignatures } from "./semantic-differ.js";
-import { tracker } from "../utils/performance";
-
 
 function runGit(args: string, cwd: string): string {
   try {
@@ -34,7 +34,7 @@ function normalisePath(p: string): string {
 /**
  * Given a normalised relative file path and the list of known workspace
  * packages (each with an absolute `path`), return the package whose directory
- * is the longest prefix of the file — i.e. the most-specific match.
+ * is the longest prefix of the file i.e. the most-specific match.
  *
  * Returns `null` for files that belong to no package (e.g. root-level files).
  */
@@ -178,7 +178,6 @@ export class GitBridge {
     ref: string,
     pkgPath: string,
   ): { dir: string; cleanup: () => void } {
-    // pkgPath relative to repo root (forward slashes)
     const pkgRel = path.relative(this.rootDir, pkgPath).replace(/\\/g, "/");
 
     const trackedFiles = gitLsTree(ref, pkgRel, this.rootDir);
@@ -271,7 +270,7 @@ export class GitBridge {
     const { packages } = this.scanner.analyzeWorkspace();
 
     const pkgNode = packages.find((p) => p.path === pkgPath);
-    // const packageName = pkgNode?.name ?? path.basename(pkgPath);
+
     let packageName = pkgNode?.name;
     if (!packageName) {
       const pkgRel = path.relative(this.rootDir, pkgPath).replace(/\\/g, "/");
@@ -281,7 +280,7 @@ export class GitBridge {
           packageName = JSON.parse(raw)?.name;
         } catch {}
       }
-      packageName ??= path.basename(pkgPath); // genuine last resort
+      packageName ??= path.basename(pkgPath);
     }
 
     try {
@@ -292,7 +291,7 @@ export class GitBridge {
       const headSha = this.getSha("HEAD");
       const isDirty = this.isDirty(pkgPath);
 
-      // ── Added: only in current tree ──────────────────────────────────────
+      // Added: only in current tree
       if (existsNow && !existsAtBase) {
         const extractor = new TypeSurfaceExtractor(this.rootDir);
         const after = tracker.track("extraction", () =>
@@ -309,7 +308,7 @@ export class GitBridge {
         return { packageName, status: "added", before: null, after, mutations };
       }
 
-      // ── Deleted: only at base ref ─────────────────────────────────────────
+      // Deleted: only at base ref
       if (!existsNow && existsAtBase) {
         const before = this.extractTypeSnapshotAtRef(
           baseRef,
@@ -335,7 +334,7 @@ export class GitBridge {
         };
       }
 
-      // ── Changed: exists on both sides ────────────────────────────────────
+      // Changed: exists on both sides
       const before = this.extractTypeSnapshotAtRef(
         baseRef,
         pkgPath,

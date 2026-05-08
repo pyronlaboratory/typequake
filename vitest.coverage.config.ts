@@ -5,7 +5,6 @@ export default defineConfig({
     testTimeout: 30_000, // slow under instrumentation
     coverage: {
       provider: "v8",
-      // ...other coverage options
     },
   },
 });

@@ -2,7 +2,9 @@ import fs from "fs";
 import path from "path";
 import yaml from "yaml";
 
-import { hasFile, readPackageJson } from "../utils/file";
+import { discoverPackages } from "./discover-packages";
+import { buildDependencyGraph } from "./build-graph";
+import { getTransitiveDependents as computeTransitiveDependents } from "./trace-deps";
 import type {
   DependencyGraph,
   PackageJson,
@@ -10,9 +12,29 @@ import type {
   WorkspaceAnalysis,
   WorkspaceConfig,
 } from "../types";
-import { discoverPackages } from "./package-discovery";
-import { buildDependencyGraph } from "./dependency-graph";
-import { getTransitiveDependents as computeTransitiveDependents } from "./transitive-dependents";
+
+// Helpers
+function hasFile(rootDir: string, file: string): boolean {
+  return fs.existsSync(path.join(rootDir, file));
+}
+
+function readJson(filePath: string): any | null {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+function readPackageJson(rootDir: string): PackageJson {
+  const pkgPath = path.join(rootDir, "package.json");
+
+  if (!fs.existsSync(pkgPath)) {
+    throw new Error("No package.json found at repository root");
+  }
+
+  return readJson(pkgPath);
+}
 
 export class WorkspaceScanner {
   private cachedResult: WorkspaceAnalysis | null = null;
@@ -20,7 +42,7 @@ export class WorkspaceScanner {
   constructor(private rootDir: string) {}
 
   /**
-   * Orchestrates workspace detection, package discovery, and graph
+   * Runs workspace detection, package discovery, and graph
    * construction. Results are cached in-memory so repeated calls within a
    * single CLI execution are free.
    */
