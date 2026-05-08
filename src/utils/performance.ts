@@ -42,15 +42,47 @@ class PerformanceTracker {
   }
 
   log() {
-    console.error("\nPerformance Metrics:");
-    console.error(
-      `  Extraction time:   ${this.metrics.extraction.toFixed(2)}ms`,
+    const cols = Math.min(process.stdout.columns || 60, 40);
+    const width = cols - 4;
+
+    const top = `╭${"─".repeat(width)}╮`;
+    const mid = `├${"─".repeat(width)}┤`;
+    const bot = `╰${"─".repeat(width)}╯`;
+    const gray = (str: string) => `\x1b[90m${str}\x1b[0m`;
+    const bold = (str: string) => `\x1b[1m${str}\x1b[0m`;
+    const cyan = (str: string) => `\x1b[36m${str}\x1b[0m`;
+
+    console.info(`\n${bold("⚡️ Performance Metrics")}`);
+    console.info(`${gray(top)}`);
+
+    const format = (label: string, value: number) => {
+      const labelStr = `${label}`;
+      const valueStr = `${value.toFixed(2)}ms`;
+      const padding = " ".repeat(
+        Math.max(0, width - labelStr.length - valueStr.length - 6),
+      );
+
+      console.info(
+        `${gray("│")} ${labelStr}${padding}    ${bold(valueStr)} ${gray("│")}`,
+      );
+    };
+
+    format("Type extraction", this.metrics.extraction);
+    format("AST diffing", this.metrics.diff);
+    format("Graph traversal", this.metrics.traversal);
+
+    console.info(`${gray(mid)}`);
+
+    const totalLabel = "Total Runtime";
+    const totalValue = `${this.metrics.total.toFixed(2)}ms`;
+    const totalPadding = " ".repeat(
+      Math.max(0, width - totalLabel.length - totalValue.length - 2),
     );
-    console.error(`  Diff time:         ${this.metrics.diff.toFixed(2)}ms`);
-    console.error(
-      `  Graph traversal:   ${this.metrics.traversal.toFixed(2)}ms`,
+
+    console.info(
+      `${gray("│")} ${bold(totalLabel)}${totalPadding}${bold(cyan(totalValue))} ${gray("│")}`,
     );
-    console.error(`  Total runtime:     ${this.metrics.total.toFixed(2)}ms`);
+    console.info(`${gray(bot)}\n`);
   }
 }
 

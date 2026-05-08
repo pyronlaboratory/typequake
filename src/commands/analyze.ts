@@ -32,7 +32,8 @@ export async function runPipeline(
   options: AnalyzeOptions = {},
 ): Promise<AnalyzeResult> {
   const log = options.verbose
-    ? (msg: string) => process.stderr.write(`[typequake] ${msg}\n`)
+    ? (msg: string) =>
+        process.stderr.write(`\x1b[1;93m[typequake:log]\x1b[0m ${msg}\n`)
     : (_msg: string) => {};
 
   const bridge = new GitBridge(rootDir);
@@ -121,16 +122,16 @@ export async function analyze(
     }
   }
 
-  if (options.timing) {
-    tracker.log();
-  }
-
   if (options.json) {
     const { renderJson } = await import("../renderer/json");
     renderJson(result);
   } else {
     const { renderTerminal } = await import("../renderer/terminal");
     await renderTerminal(result);
+
+    if (options.timing) {
+      tracker.log();
+    }
   }
 
   if (isCiMode(options.ci ?? false)) {

@@ -59,13 +59,12 @@ function ReportRow({
   isLast: boolean;
 }) {
   return (
-    <Box flexDirection="column" marginBottom={isLast ? 0 : 0}>
+    <Box flexDirection="column" marginBottom={isLast ? 1.2 : 1}>
       <Box>
-        {/* symbol column */}
         <Box width={24} paddingLeft={2}>
           <Text bold>{report.symbol}</Text>
         </Box>
-        {/* detail column */}
+
         <Text dimColor>{report.detail}</Text>
       </Box>
       {report.sites.map((site, i) => (
@@ -85,16 +84,46 @@ function SeverityGroup({
   const color = SEVERITY_COLOR[cls];
   return (
     <Box flexDirection="column" marginTop={1}>
-      {/* group header */}
       <Box>
-        <Text bold color={color}>{`  ${cls}`}</Text>
+        <Text bold color={color}>{`${cls}`}</Text>
         <Text dimColor>{`  (${reports.length})`}</Text>
       </Box>
-      {/* divider */}
-      <Text dimColor>{"  " + "─".repeat(56)}</Text>
+
+      <Box height={1} overflow="hidden">
+        <Text color="gray">
+          {"".repeat(1) +
+            "─".repeat(process.stdout.columns || 60) +
+            " ".repeat(2)}
+        </Text>
+      </Box>
       {reports.map((r, i) => (
         <ReportRow key={i} report={r} isLast={i === reports.length - 1} />
       ))}
+    </Box>
+  );
+}
+
+function ReportHeader({ result }: { result: AnalyzeResult }) {
+  const cols = process.stdout.columns || 80;
+  const left = "IMPACT REPORT";
+  const right = `ref ${result.baseRef}`;
+  const gap = cols - left.length - right.length;
+
+  return (
+    <Box
+      flexDirection="column"
+      marginBottom={result.reports.length ? 1 : 0}
+      marginTop={1}
+    >
+      <Box>
+        <Text bold>{left}</Text>
+        <Text dimColor>{" ".repeat(Math.max(1, gap))}</Text>
+        <Text dimColor>{`ref `}</Text>
+        <Text color="cyan">{result.baseRef}</Text>
+      </Box>
+      <Box>
+        <Text dimColor>{"─".repeat(cols)}</Text>
+      </Box>
     </Box>
   );
 }
@@ -106,6 +135,7 @@ function PackageSection({
   name: string;
   reports: ImpactReport[];
 }) {
+  const cols = process.stdout.columns || 80;
   const bySeverity = new Map<TypeMutationClass, ImpactReport[]>();
   for (const r of reports) {
     const bucket = bySeverity.get(r.mutationClass);
@@ -113,16 +143,14 @@ function PackageSection({
     else bySeverity.set(r.mutationClass, [r]);
   }
 
+  const right = `${reports.length} mutation${reports.length !== 1 ? "s" : ""}`;
+
   return (
-    <Box flexDirection="column" marginBottom={1}>
-      <Box borderStyle="round" borderColor="gray" paddingX={1}>
-        <Text bold color="white">
-          {"📦 "}
-          {name}
-        </Text>
-        <Text
-          dimColor
-        >{`  ${reports.length} mutation${reports.length !== 1 ? "s" : ""}`}</Text>
+    <Box flexDirection="column" marginBottom={1} marginTop={-1}>
+      <Box>
+        <Text bold>{`📦 ${name}`}</Text>
+        <Text dimColor>{" | "}</Text>
+        <Text dimColor>{right}</Text>
       </Box>
       {SEVERITY_ORDER.filter((cls) => bySeverity.has(cls)).map((cls) => (
         <SeverityGroup key={cls} cls={cls} reports={bySeverity.get(cls)!} />
@@ -142,17 +170,23 @@ function SummaryLine({ result }: { result: AnalyzeResult }) {
 
   if (parts.length === 0) {
     return (
-      <Box marginTop={1}>
+      <Box marginTop={0} marginBottom={1}>
         <Text color="green" bold>
-          {"✔  No type mutations detected."}
+          {" ✔ No type mutations detected."}
         </Text>
       </Box>
     );
   }
 
   return (
-    <Box marginTop={1} flexDirection="column">
-      <Text dimColor>{"─".repeat(60)}</Text>
+    <Box flexDirection="column" marginTop={-1} marginBottom={0}>
+      <Box height={1} overflow="hidden">
+        <Text color="gray">
+          {"".repeat(1) +
+            "─".repeat(process.stdout.columns || 60) +
+            " ".repeat(2)}
+        </Text>
+      </Box>
       <Box>
         <Text bold>{"Summary  "}</Text>
         {parts.map((cls, i) => (
@@ -181,16 +215,12 @@ function Report({ result }: { result: AnalyzeResult }) {
   }
 
   return (
-    <Box flexDirection="column" paddingY={1}>
-      <Box marginBottom={1}>
-        <Text bold>{"typequake  "}</Text>
-        <Text dimColor>{"base: "}</Text>
-        <Text color="cyan">{result.baseRef}</Text>
-      </Box>
+    <Box flexDirection="column" paddingY={0}>
+      <ReportHeader result={result} />
 
       {byPackage.size === 0 ? (
         <Text color="green" bold>
-          {"✔  No consumer impact detected."}
+          {" ✔ No consumer impact detected."}
         </Text>
       ) : (
         Array.from(byPackage.entries()).map(([pkg, reports]) => (
@@ -204,9 +234,8 @@ function Report({ result }: { result: AnalyzeResult }) {
 }
 
 export async function renderTerminal(result: AnalyzeResult): Promise<void> {
-  const { unmount, waitUntilExit } = render(<Report result={result} />, {
+  const { waitUntilExit } = render(<Report result={result} />, {
     exitOnCtrlC: false,
   });
-  unmount();
   await waitUntilExit();
 }

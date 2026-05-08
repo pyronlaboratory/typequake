@@ -39,8 +39,6 @@ function ghaWarning(report: ImpactReport): void {
   }
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
-
 /**
  * Returns true if CI mode should be active.
  * Triggered by --ci flag OR when the CI env var is set (GitHub Actions, etc).
@@ -77,7 +75,7 @@ export function runCiCheck(result: AnalyzeResult): never {
 
   if (breaking.length > 0) {
     process.stderr.write(
-      `\ntypequake: ${breaking.length} BREAKING change${breaking.length !== 1 ? "s" : ""} detected — exiting with code 1.\n`,
+      `\n\x1b[38;5;210m[typequake:err] found ${breaking.length} breaking change${breaking.length !== 1 ? "s" : ""} detected; exiting with code 1.\x1b[0m\n`,
     );
     process.exit(1);
   }
