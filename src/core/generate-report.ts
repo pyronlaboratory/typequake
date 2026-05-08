@@ -1,3 +1,6 @@
+import { findImportUsages } from "./resolve-imports";
+import { getTransitiveDependents } from "./trace-deps";
+import { tracker } from "../utils/performance";
 import type {
   ImpactReport,
   ImportSite,
@@ -5,9 +8,6 @@ import type {
   TypeMutationClass,
   WorkspaceGraph,
 } from "../types/index";
-import { resolveImportSites } from "./resolve-imports";
-import { getTransitiveDependents } from "./trace-deps";
-import { tracker } from "../utils/performance";
 
 const SEVERITY_ORDER: Record<TypeMutationClass, number> = {
   BREAKING: 0,
@@ -46,7 +46,7 @@ export async function generateReport(
       if (!consumerNode) return [];
 
       const sites = await tracker.trackAsync("traversal", () =>
-        resolveImportSites(consumerNode.path, modifiedPackage, changedSymbols),
+        findImportUsages(consumerNode.path, modifiedPackage, changedSymbols),
       );
 
       return sites;

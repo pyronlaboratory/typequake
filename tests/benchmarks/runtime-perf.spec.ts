@@ -1,58 +1,14 @@
-/**
- * Runtime Performance Benchmark
- * ==============================
- * Validates that TypeQuake completes a full analysis pipeline within the
- * accepted performance budget when run against a realistic 20-package monorepo.
- *
- * Acceptance Criteria
- * -------------------
- *   • Workspace size : 20 packages (1 changed, 6 direct consumers, 13 transitive)
- *   • Simulated change: BREAKING – removes `createdAt` from `User` and narrows
- *                       the `role` union in @benchmark/shared-core
- *   • Budget          : < 10 000 ms (wall-clock, cold run, --no-cache)
- *
- * Fixture
- * -------
- *   tests/fixtures/benchmark/
- *     packages/shared-core        ← the package that "changes"
- *     packages/feature-{auth,users,billing,notifications,analytics,search}
- *     packages/utils-{array,string,object,date}
- *     packages/service-{api,data,events,reporting}
- *     packages/app-{dashboard,admin,mobile,cli,webhook}
- *
- * How it works
- * ------------
- *   1. Copy the fixture into a throw-away temp directory.
- *   2. `git init` + commit everything → this becomes the "base ref" snapshot.
- *   3. Overwrite shared-core/src/index.ts with the breaking variant.
- *   4. Invoke the TypeQuake CLI (bun run src/cli.ts <sha> --no-cache) and
- *      measure wall-clock time with performance.now().
- *   5. Assert elapsed < BUDGET_MS and that the process exits without an
- *      unexpected error code.
- */
-
 import { execSync, spawnSync } from "node:child_process";
 import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
 const BUDGET_MS = 10_000;
 
 const FIXTURE_DIR = resolve(__dirname, "../fixtures/benchmark");
 const CLI_PATH = resolve(__dirname, "../../src/cli.ts");
 
-/**
- * The "after" state of shared-core/src/index.ts.
- *
- * Breaking changes introduced versus the committed baseline:
- *   1. `createdAt` field removed from `User`          → BREAKING (consumers read it)
- *   2. `role` union narrows: 'editor' dropped          → NARROWING
- *   3. `avatarUrl` removed entirely (was @deprecated)  → BREAKING
- *   4. New required field `updatedAt` added             → BREAKING for producers
- */
 const BROKEN_SHARED_CORE = /* ts */ `
 // MODIFIED: breaking change applied by runtime-perf benchmark
 
@@ -95,8 +51,6 @@ export function assertNever(x: never): never {
 }
 `.trimStart();
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 function git(cwd: string, ...args: string[]): void {
   execSync(["git", ...args].join(" "), {
     cwd,
@@ -120,13 +74,11 @@ function gitOutput(cwd: string, ...args: string[]): string {
     .trim();
 }
 
-// ── Suite ─────────────────────────────────────────────────────────────────────
-
-describe("Runtime Performance – 20-package workspace", () => {
+describe("Runtime Performance", () => {
   let repoDir: string;
   let baseSha: string;
 
-  // ── Setup: build a real throw-away git repo from the fixture ──────────────
+  // Setup: build a real throw-away git repo from the fixture
   beforeAll(() => {
     repoDir = mkdtempSync(join(tmpdir(), "typequake-bench-"));
 
@@ -135,8 +87,8 @@ describe("Runtime Performance – 20-package workspace", () => {
 
     // Initialise git with a deterministic identity (required for CI)
     git(repoDir, "init");
-    git(repoDir, "config", "user.email", '"bench@typequake.test"');
-    git(repoDir, "config", "user.name", '"TypeQuake Bench"');
+    git(repoDir, "config", "user.email", '"bulma@capsule.corp"');
+    git(repoDir, "config", "user.name", '"Bulma"');
     git(repoDir, "add", ".");
     git(repoDir, "commit", "-m", '"perf-bench: initial 20-package baseline"');
 
@@ -153,9 +105,9 @@ describe("Runtime Performance – 20-package workspace", () => {
     rmSync(repoDir, { recursive: true, force: true });
   });
 
-  // ── Benchmark ─────────────────────────────────────────────────────────────
+  // Benchmarking
   it(
-    `completes full pipeline in < ${BUDGET_MS / 1_000}s for a 20-package workspace with 1 changed package`,
+    `completes full pipeline in < ${BUDGET_MS / 1_000}s`,
     () => {
       const start = performance.now();
 
@@ -177,8 +129,7 @@ describe("Runtime Performance – 20-package workspace", () => {
 
       const elapsed = performance.now() - start;
 
-      // ── Correctness guards ────────────────────────────────────────────────
-
+      // Correctness guards
       // Exit codes: 0 = clean, 1 = breaking changes found.
       // Any other code (2, null) indicates a crash.
       expect(
@@ -209,33 +160,74 @@ describe("Runtime Performance – 20-package workspace", () => {
         ]),
       });
 
-      // ── Performance assertion ─────────────────────────────────────────────
+      // Performance assertion
       expect(
         elapsed,
         `Pipeline took ${elapsed.toFixed(0)} ms – exceeded the ${BUDGET_MS} ms budget`,
       ).toBeLessThan(BUDGET_MS);
 
-      // Human-readable summary always visible in CI logs
-      const changedPkg =
-        (report as { packages?: { name: string }[] }).packages ?? [];
-      console.log(
-        [
-          "",
-          "  ┌─ Performance Benchmark Result ─────────────────────────────┐",
-          `  │  Elapsed          : ${elapsed.toFixed(0).padStart(6)} ms                              │`,
-          `  │  Budget           : ${String(BUDGET_MS).padStart(6)} ms                              │`,
-          `  │  Headroom         : ${(BUDGET_MS - elapsed).toFixed(0).padStart(6)} ms                              │`,
-          `  │  Packages scanned : ${String(20).padStart(4)}                                   │`,
-          `  │  Packages changed : ${String(changedPkg.length).padStart(4)}                              │`,
-          "  └────────────────────────────────────────────────────────────┘",
-          "",
-        ].join("\n"),
-      );
+      const parsed = report as {
+        reports?: Array<{ consumerPackage?: string }>;
+      };
+
+      const changedPackages = [
+        ...new Set(
+          (parsed.reports ?? []).map((r) => r.consumerPackage).filter(Boolean),
+        ),
+      ];
+
+      const rows: Array<[string, string]> = [
+        ["Elapsed", `${elapsed.toFixed(0)} ms`],
+        ["Budget", `${BUDGET_MS} ms`],
+        ["Headroom", `${(BUDGET_MS - elapsed).toFixed(0)} ms`],
+        ["Packages scanned", "20"],
+        ["Packages changed", String(changedPackages.length)],
+      ];
+
+      const innerWidth = 58;
+
+      console.log("");
+      console.log(`  ┌─ Performance Benchmark Result ${"─".repeat(27)}┐`);
+
+      for (const [label, value] of rows) {
+        const content = `  ${label.padEnd(18)} : ${value.padStart(8)}  `;
+        console.log(`  │${content.padEnd(innerWidth)}│`);
+      }
+
+      console.log(`  └${"─".repeat(innerWidth)}┘`);
+
+      if (changedPackages.length > 0) {
+        console.log(`  Changed packages     : ${changedPackages.join(", ")}`);
+      }
+
+      console.log("");
+
+      // // Human-readable summary always visible in CI logs
+      // const changedPkg =
+      //   (report as { packages?: { name: string }[] }).packages ?? [];
+
+      // const changedCount = changedPkg.length;
+      // const changedList =
+      //   changedCount > 0 ? changedPkg.map((p) => p.name).join(", ") : "none";
+
+      // console.log(
+      //   [
+      //     "",
+      //     "  ┌─ Performance Benchmark Result ─────────────────────────────┐",
+      //     `  │  Elapsed          : ${elapsed.toFixed(0).padStart(6)} ms                              │`,
+      //     `  │  Budget           : ${String(BUDGET_MS).padStart(6)} ms                              │`,
+      //     `  │  Headroom         : ${(BUDGET_MS - elapsed).toFixed(0).padStart(6)} ms                              │`,
+      //     `  │  Packages scanned : ${String(20).padStart(4)}                                   │`,
+      //     `  │  Packages changed : ${String(changedCount).padStart(4)}                              │`,
+      //     "  └────────────────────────────────────────────────────────────┘",
+      //     "",
+      //   ].join("\n"),
+      // );
     },
     BUDGET_MS + 10_000, // vitest per-test timeout
   );
 
-  // ── Smoke test: cached run should be even faster ──────────────────────────
+  // Smoke test: cached run should be even faster
   it(
     "cached re-run completes faster than the cold run",
     () => {

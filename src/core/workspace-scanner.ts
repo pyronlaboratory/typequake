@@ -2,6 +2,9 @@ import fs from "fs";
 import path from "path";
 import yaml from "yaml";
 
+import { discoverPackages } from "./discover-packages";
+import { buildDependencyGraph } from "./build-graph";
+import { getTransitiveDependents as computeTransitiveDependents } from "./trace-deps";
 import type {
   DependencyGraph,
   PackageJson,
@@ -9,9 +12,6 @@ import type {
   WorkspaceAnalysis,
   WorkspaceConfig,
 } from "../types";
-import { discoverPackages } from "./discover-packages";
-import { buildDependencyGraph } from "./build-graph";
-import { getTransitiveDependents as computeTransitiveDependents } from "./trace-deps";
 
 // Helpers
 function hasFile(rootDir: string, file: string): boolean {

@@ -1,26 +1,27 @@
 import fs from "fs";
 import path from "path";
 import ts from "typescript";
+
 import type { ImportSite } from "../types/index";
 
 /**
- * One ts.Program per consumer package path.  Re-using a single program for
+ * One ts.Program per consumer package path. Re-using a single program for
  * all files in a package is required by the acceptance criteria and avoids
  * re-parsing the same source on every file visit.
  */
-export class ImportSiteResolver {
+export class ImportReferenceTracer {
   private programCache = new Map<string, Promise<ts.Program>>();
 
   /**
-   * Build (or retrieve from cache) a `ts.Program` that covers every source file
-   * in `packagePath`.
+   * Build (or retrieve from cache) a `ts.Program` that covers every source
+   * file in `pkgPath`.
    */
-  private async loadProgram(packagePath: string): Promise<ts.Program> {
-    const existing = this.programCache.get(packagePath);
+  private async loadProgram(pkgPath: string): Promise<ts.Program> {
+    const existing = this.programCache.get(pkgPath);
     if (existing) return existing;
 
     const promise = (async () => {
-      const tsconfigPath = path.join(packagePath, "tsconfig.json");
+      const tsconfigPath = path.join(pkgPath, "tsconfig.json");
 
       let rootNames: string[];
       let options: ts.CompilerOptions;
@@ -29,7 +30,7 @@ export class ImportSiteResolver {
         const configFile = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
         /* istanbul ignore next */
         if (configFile.error) {
-          rootNames = collectTsFiles(packagePath);
+          rootNames = collectTsFiles(pkgPath);
           options = { noEmit: true, skipLibCheck: true };
         } else {
           const parsed = ts.parseJsonConfigFileContent(
@@ -41,24 +42,24 @@ export class ImportSiteResolver {
           options = { ...parsed.options, noEmit: true };
         }
       } else {
-        rootNames = collectTsFiles(packagePath);
+        rootNames = collectTsFiles(pkgPath);
         options = { noEmit: true, skipLibCheck: true };
       }
 
       return ts.createProgram(rootNames, options);
     })();
 
-    this.programCache.set(packagePath, promise);
+    this.programCache.set(pkgPath, promise);
     return promise;
   }
 
   /**
    * Locate every import site of `changedSymbols` (exported from
-   * `changedPackageName`) within the consumer package at `consumerPkgPath`.
+   * `changedPkgName`) within the consumer package at `consumerPkgPath`.
    */
-  public async resolveImportSites(
+  public async trace(
     consumerPkgPath: string,
-    changedPackageName: string,
+    changedPkgName: string,
     changedSymbols: string[],
   ): Promise<ImportSite[]> {
     if (changedSymbols.length === 0) return [];
@@ -66,17 +67,17 @@ export class ImportSiteResolver {
     const pkgJsonPath = path.join(consumerPkgPath, "package.json");
     if (!fs.existsSync(pkgJsonPath)) return [];
 
-    let consumerPackage: string;
+    let consumerPkg: string;
     try {
       const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8")) as {
         name?: unknown;
       };
-      consumerPackage =
+      consumerPkg =
         typeof pkgJson.name === "string"
           ? pkgJson.name
           : /* istanbul ignore next */ path.basename(consumerPkgPath);
     } catch /* istanbul ignore next */ {
-      consumerPackage = path.basename(consumerPkgPath);
+      consumerPkg = path.basename(consumerPkgPath);
     }
 
     const program = await this.loadProgram(consumerPkgPath);
@@ -92,10 +93,10 @@ export class ImportSiteResolver {
       const normalizedFile = path.resolve(sourceFile.fileName);
       if (!normalizedFile.startsWith(normalizedPkgPath)) continue;
 
-      const sites = extractSitesFromFile(
+      const sites = findReferencesInFile(
         sourceFile,
-        consumerPackage,
-        changedPackageName,
+        consumerPkg,
+        changedPkgName,
         symbolSet,
         compilerOptions,
       );
@@ -117,18 +118,14 @@ export class ImportSiteResolver {
  * In the main thread, this instance will delegate to workers.
  * In a worker thread, this instance will perform the actual work.
  */
-const defaultResolver = new ImportSiteResolver();
+const defaultResolver = new ImportReferenceTracer();
 
-export async function resolveImportSites(
+export async function findImportUsages(
   consumerPkgPath: string,
-  changedPackageName: string,
+  changedPkgName: string,
   changedSymbols: string[],
 ): Promise<ImportSite[]> {
-  return defaultResolver.resolveImportSites(
-    consumerPkgPath,
-    changedPackageName,
-    changedSymbols,
-  );
+  return defaultResolver.trace(consumerPkgPath, changedPkgName, changedSymbols);
 }
 
 export function clearProgramCache(): void {
@@ -202,12 +199,12 @@ export function nearestPackageName(filePath: string): string | null {
 
 /**
  * Determine whether a module specifier inside a TypeScript source file refers
- * to `changedPackageName`.
+ * to `changedPkgName`.
  *
  * Resolution order:
  *  1. Exact bare-specifier match:  `'@scope/pkg'`
  *  2. Subpath export match:        `'@scope/pkg/utils'`
- *  3. Relative specifier:          resolved via `ts.resolveModuleName`, then
+ *  3. Relative specifier:           resolved via `ts.resolveModuleName`, then
  *     the nearest `package.json` is read from the resolved file path.
  *
  * Non-relative bare specifiers that do not match (1) or (2) are rejected
@@ -215,16 +212,16 @@ export function nearestPackageName(filePath: string): string | null {
  *
  * Exported so tests can exercise specifier matching without a full pipeline.
  */
-export function specifierResolvesToPackage(
+export function isModuleFromPackage(
   specifier: string,
   sourceFilePath: string,
   compilerOptions: ts.CompilerOptions,
-  changedPackageName: string,
+  changedPkgName: string,
 ): boolean {
   // Fast path — direct or subpath bare import.
   if (
-    specifier === changedPackageName ||
-    specifier.startsWith(changedPackageName + "/")
+    specifier === changedPkgName ||
+    specifier.startsWith(changedPkgName + "/")
   ) {
     return true;
   }
@@ -245,7 +242,7 @@ export function specifierResolvesToPackage(
 
   return (
     nearestPackageName(resolved.resolvedModule.resolvedFileName) ===
-    changedPackageName
+    changedPkgName
   );
 }
 
@@ -299,18 +296,18 @@ export function countUsages(
  * Extract every `ImportSite` for `changedPackageName` symbols from a single
  * source file.  Handles all four import/export forms:
  *
- *   import  { Foo, Bar as B }      from '…'   — named import
- *   import  type { Foo }           from '…'   — type-only named import
- *   import  * as Ns                from '…'   — namespace import
- *   export  { Foo, Bar as Baz }    from '…'   — named re-export
- *   export  type { Foo }           from '…'   — type-only named re-export
- *   export  * from '…'             — wildcard re-export
- *   export  * as Ns from '…'       — namespace re-export
+ *   import  { Foo, Bar as B }      from '...'   — named import
+ *   import  type { Foo }           from '...'   — type-only named import
+ *   import  * as Ns                from '...'   — namespace import
+ *   export  { Foo, Bar as Baz }    from '...'   — named re-export
+ *   export  type { Foo }           from '...'   — type-only named re-export
+ *   export  *                      from '...'   — wildcard re-export
+ *   export  * as Ns                from '...'   — namespace re-export
  *
  * Exported so it can be driven directly in unit tests without needing a real
  * consumer package on disk.
  */
-export function extractSitesFromFile(
+export function findReferencesInFile(
   sourceFile: ts.SourceFile,
   consumerPackage: string,
   changedPackageName: string,
@@ -320,15 +317,15 @@ export function extractSitesFromFile(
   const results: ImportSite[] = [];
 
   for (const stmt of sourceFile.statements) {
-    // ── import { Foo, Bar as B } from '…'
-    // ── import type { Foo }      from '…'
-    // ── import * as Ns           from '…'
+    // ── import { Foo, Bar as B } from '...'
+    // ── import type { Foo }      from '...'
+    // ── import * as Ns           from '...'
     if (ts.isImportDeclaration(stmt)) {
       if (!ts.isStringLiteral(stmt.moduleSpecifier)) continue;
       const specifier = stmt.moduleSpecifier.text;
 
       if (
-        !specifierResolvesToPackage(
+        !isModuleFromPackage(
           specifier,
           sourceFile.fileName,
           compilerOptions,
@@ -342,7 +339,7 @@ export function extractSitesFromFile(
       const namedBindings = stmt.importClause?.namedBindings;
 
       if (namedBindings && ts.isNamedImports(namedBindings)) {
-        // import { Foo, Bar as B } from '…'
+        // import { Foo, Bar as B } from '...'
         for (const element of namedBindings.elements) {
           // When `import { Foo as Bar }`, propertyName.text === 'Foo' (original
           // exported name) and name.text === 'Bar' (local binding).
@@ -369,7 +366,7 @@ export function extractSitesFromFile(
           });
         }
       } else if (namedBindings && ts.isNamespaceImport(namedBindings)) {
-        // import * as Ns from '…'
+        // import * as Ns from '...'
         // All changed symbols are accessible via the namespace; we record one
         // site per changed symbol with the namespace name as the alias.
         const namespaceName = namedBindings.name.text;
@@ -393,16 +390,16 @@ export function extractSitesFromFile(
       }
     }
 
-    // ── export { Foo, Bar as Baz } from '…'
-    // ── export type { Foo }        from '…'
-    // ── export * from '…'
-    // ── export * as Ns from '…'
+    // ── export { Foo, Bar as Baz } from '...'
+    // ── export type { Foo }        from '...'
+    // ── export * from '...'
+    // ── export * as Ns from '...'
     if (ts.isExportDeclaration(stmt) && stmt.moduleSpecifier) {
       if (!ts.isStringLiteral(stmt.moduleSpecifier)) continue;
       const specifier = stmt.moduleSpecifier.text;
 
       if (
-        !specifierResolvesToPackage(
+        !isModuleFromPackage(
           specifier,
           sourceFile.fileName,
           compilerOptions,
@@ -415,7 +412,7 @@ export function extractSitesFromFile(
       const isTypeOnly = stmt.isTypeOnly;
 
       if (stmt.exportClause && ts.isNamedExports(stmt.exportClause)) {
-        // export { Foo, Bar as Baz } from '…'
+        // export { Foo, Bar as Baz } from '...'
         for (const element of stmt.exportClause.elements) {
           // propertyName is the *imported* name; name is what's re-exported as.
           const symbolName = (element.propertyName ?? element.name).text;
@@ -442,7 +439,7 @@ export function extractSitesFromFile(
           });
         }
       } else if (stmt.exportClause && ts.isNamespaceExport(stmt.exportClause)) {
-        // export * as Ns from '…'
+        // export * as Ns from '...'
         // All changed symbols are re-exported under the namespace name.
         const namespaceName = stmt.exportClause.name.text;
         const pos = sourceFile.getLineAndCharacterOfPosition(
@@ -462,7 +459,7 @@ export function extractSitesFromFile(
           });
         }
       } else if (!stmt.exportClause) {
-        // export * from '…'
+        // export * from '...'
         // All changed symbols are potentially re-exported; we can't know which
         // ones without expanding the star, so we record a site for each.
         const pos = sourceFile.getLineAndCharacterOfPosition(

@@ -72,6 +72,9 @@ export class UserService extends BaseService {
   public findUser<T extends { id: string }>(query: T): API.Response<T> {
     return { data: query };
   }
+  public async getById<T>(id: string): Promise<T> {
+    return {} as any;
+  }
 }
 
 export type Status = 'idle' | 'loading' | 'success' | 'error';

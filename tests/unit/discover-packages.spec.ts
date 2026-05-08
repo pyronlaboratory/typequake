@@ -8,22 +8,19 @@ const fixtureRoot = path.resolve(
   "../fixtures/workspaces/workspace-pnpm",
 );
 
-describe("discoverPackages", () => {
+describe("Discover Packages", () => {
   const config: WorkspaceConfig = {
     type: "pnpm",
     rootDir: fixtureRoot,
     packageGlobs: ["packages/*"],
   };
 
-  it("discovers all packages", () => {
+  it("finds all workspace packages", () => {
     const result = discoverPackages(config);
 
     const names = result.map((p) => p.name);
 
-    expect(names).toEqual([
-      "@pkg/api",
-      "@pkg/core",
-    ]); // sorted
+    expect(names).toEqual(["@pkg/api", "@pkg/core"]); // sorted
   });
 
   it("extracts metadata correctly", () => {
@@ -40,7 +37,7 @@ describe("discoverPackages", () => {
     expect(api?.dependencies).toContain("@pkg/core");
   });
 
-  it("is deterministic (stable ordering)", () => {
+  it("returns packages in deterministic order", () => {
     const result1 = discoverPackages(config);
     const result2 = discoverPackages(config);
 

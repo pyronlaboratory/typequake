@@ -1,20 +1,20 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+
+// Mock import-resolver so tests don't need real TS programs on disk
+vi.mock("../../src/core/resolve-imports", () => ({
+  findImportUsages: vi.fn(),
+}));
+
 import { generateReport } from "../../src/core/generate-report";
+import { findImportUsages } from "../../src/core/resolve-imports";
 import type {
   MutationRecord,
   ImportSite,
   WorkspaceGraph,
 } from "../../src/types/index";
 
-// Mock import-resolver so tests don't need real TS programs on disk
-vi.mock("../../src/core/resolve-imports", () => ({
-  resolveImportSites: vi.fn(),
-}));
+const mockFindImportUsages = findImportUsages as Mock;
 
-import { resolveImportSites } from "../../src/core/resolve-imports";
-const mockResolveImportSites = resolveImportSites as Mock;
-
-// In-memory fixtures
 function makeGraph(
   packages: Array<{ name: string; path: string; dependsOn?: string[] }>,
   changedPkg: string,
@@ -64,12 +64,12 @@ function makeBreakingMutation(symbolName = "UserRecord"): MutationRecord {
   };
 }
 
-describe("generateReport", () => {
+describe("Impact Report Generation", () => {
   beforeEach(() => {
-    mockResolveImportSites.mockReset();
+    mockFindImportUsages.mockReset();
   });
 
-  it("all-clear: returns empty array when there are no mutations", async () => {
+  it("returns empty array when there are no mutations", async () => {
     const workspaceGraph = makeGraph(
       [
         { name: "@repo/core", path: "/workspace/core" },
@@ -85,12 +85,12 @@ describe("generateReport", () => {
     const result = await generateReport("@repo/core", [], workspaceGraph);
 
     expect(result).toEqual([]);
-    expect(mockResolveImportSites).not.toHaveBeenCalled();
+    expect(mockFindImportUsages).not.toHaveBeenCalled();
     expect(result).toMatchSnapshot();
   });
 
-  it("all-clear: returns empty array when no consumer imports a changed symbol", async () => {
-    mockResolveImportSites.mockReturnValue([]);
+  it("returns empty array when consumers do not reference changed symbols", async () => {
+    mockFindImportUsages.mockReturnValue([]);
 
     const workspaceGraph = makeGraph(
       [
@@ -114,7 +114,7 @@ describe("generateReport", () => {
     expect(result).toMatchSnapshot();
   });
 
-  it("single breaking change with two consumers", async () => {
+  it("emits one report per impacted consumer", async () => {
     const site1 = makeSite({
       consumerPackage: "@repo/api",
       filePath: "/workspace/api/src/user.ts",
@@ -128,7 +128,7 @@ describe("generateReport", () => {
       symbolName: "UserRecord",
     });
 
-    mockResolveImportSites
+    mockFindImportUsages
       .mockReturnValueOnce([site1]) // called for @repo/api
       .mockReturnValueOnce([site2]); // called for @repo/dashboard
 
@@ -164,11 +164,11 @@ describe("generateReport", () => {
     expect(result).toMatchSnapshot();
   });
 
-  it("mixed severity output is sorted correctly", async () => {
+  it("sorts reports by mutation severity", async () => {
     // @repo/api imports the BREAKING symbol
     // @repo/analytics imports the WIDENING symbol
     // @repo/dashboard imports the ADDITIVE symbol
-    mockResolveImportSites.mockImplementation((_path, _pkg, symbols) => {
+    mockFindImportUsages.mockImplementation((_path, _pkg, symbols) => {
       // Return a site matching whatever symbol was requested
       return symbols.map((sym: any) =>
         makeSite({ consumerPackage: _path, symbolName: sym }),
@@ -238,9 +238,9 @@ describe("generateReport", () => {
     expect(result).toMatchSnapshot();
   });
 
-  it("detail is passed through from MutationRecord unchanged", async () => {
+  it("preserves mutation detail text in generated reports", async () => {
     const expectedDetail = "required property 'id' removed from UserRecord";
-    mockResolveImportSites.mockReturnValue([makeSite()]);
+    mockFindImportUsages.mockReturnValue([makeSite()]);
 
     const workspaceGraph = makeGraph(
       [
@@ -263,8 +263,8 @@ describe("generateReport", () => {
     expect(report!.detail).toBe(expectedDetail);
   });
 
-  it("consumers with no matching import sites produce zero entries", async () => {
-    mockResolveImportSites.mockReturnValue([]);
+  it("skips consumers without matching import sites", async () => {
+    mockFindImportUsages.mockReturnValue([]);
 
     const workspaceGraph = makeGraph(
       [
@@ -292,9 +292,9 @@ describe("generateReport", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("parallelises ImportSiteResolver calls with Promise.all", async () => {
+  it("resolves consumer import sites in parallel", async () => {
     const callOrder: string[] = [];
-    mockResolveImportSites.mockImplementation((pkgPath) => {
+    mockFindImportUsages.mockImplementation((pkgPath) => {
       callOrder.push(pkgPath);
       return [makeSite({ consumerPackage: pkgPath, symbolName: "UserRecord" })];
     });
@@ -316,6 +316,6 @@ describe("generateReport", () => {
     );
 
     // All three consumers must have been resolved
-    expect(mockResolveImportSites).toHaveBeenCalledTimes(3);
+    expect(mockFindImportUsages).toHaveBeenCalledTimes(3);
   });
 });

@@ -2,13 +2,13 @@ import fs from "fs";
 import path from "path";
 import ts from "typescript";
 
+import { getCacheKey, readCache, writeCache } from "../utils/cache.ts";
 import type {
   PackageJson,
   PropertySignature,
   SignatureMap,
   TypeSignature,
 } from "../types/index.js";
-import { getCacheKey, readCache, writeCache } from "../utils/cache.ts";
 
 const programCache = new Map<string, ts.Program>();
 
@@ -138,9 +138,16 @@ function extractProperties(
     .sort((a, b) => a.getName().localeCompare(b.getName()))
     .map((prop) => {
       const decl = prop.getDeclarations()?.[0];
-      const propType = decl
-        ? checker.getTypeOfSymbolAtLocation(prop, decl)
-        : checker.getDeclaredTypeOfSymbol(prop);
+
+      // For method declarations, getTypeOfSymbolAtLocation resolves the
+      // generic signature at the call site, erasing type parameters like <T>.
+      // getTypeOfSymbol preserves the full generic signature.
+      const propType =
+        decl && ts.isMethodDeclaration(decl)
+          ? checker.getTypeOfSymbol(prop)
+          : decl
+            ? checker.getTypeOfSymbolAtLocation(prop, decl)
+            : checker.getDeclaredTypeOfSymbol(prop);
 
       return {
         name: prop.getName(),
@@ -177,7 +184,7 @@ function serializeSymbol(
   // through the alias so we get the real interface/type/class node.
   let resolvedSym = sym;
   if (ts.isExportSpecifier(declarations[0]!)) {
-    // istanbul ignore next
+    /* istanbul ignore next */
     try {
       resolvedSym = checker.getAliasedSymbol(sym);
     } catch {
@@ -200,6 +207,13 @@ function serializeSymbol(
     type = checker.getDeclaredTypeOfSymbol(resolvedSym);
     typeString = decl.type.getText();
   } else if (ts.isInterfaceDeclaration(decl) || ts.isEnumDeclaration(decl)) {
+    type = checker.getDeclaredTypeOfSymbol(resolvedSym);
+    typeString = checker.typeToString(
+      type,
+      undefined,
+      ts.TypeFormatFlags.NoTruncation,
+    );
+  } else if (ts.isClassDeclaration(decl)) {
     type = checker.getDeclaredTypeOfSymbol(resolvedSym);
     typeString = checker.typeToString(
       type,
@@ -311,7 +325,7 @@ export class TypeSurfaceExtractor {
     } else {
       // Script-mode fallback — iterate top-level exported declarations.
 
-      // istanbul ignore next
+      /* istanbul ignore next */
       for (const stmt of sourceFile.statements) {
         if (!isExportedStatement(stmt)) continue;
         for (const sym of getSymbolsFromStatement(stmt, checker)) {
@@ -335,7 +349,7 @@ export class TypeSurfaceExtractor {
 
 // Script-mode fallback
 
-// istanbul ignore next
+/* istanbul ignore next */
 function isExportedStatement(node: ts.Statement): boolean {
   if (!ts.canHaveModifiers(node)) return false;
   return (ts.getModifiers(node) ?? []).some(
@@ -343,7 +357,7 @@ function isExportedStatement(node: ts.Statement): boolean {
   );
 }
 
-// istanbul ignore next
+/* istanbul ignore next */
 function getSymbolsFromStatement(
   stmt: ts.Statement,
   checker: ts.TypeChecker,

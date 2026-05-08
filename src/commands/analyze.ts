@@ -15,14 +15,16 @@ export interface AnalyzeResult {
 }
 
 /**
- * Full analysis pipeline:
- *  1. Detect which workspace packages changed since `baseRef`
- *  2. Extract before/after type signatures and diff each changed package
- *  3. Traverse transitive dependents
- *  4. Resolve import sites
- *  5. Generate impact reports
+ * Executes the end-to-end TypeQuake analysis workflow:
  *
- * Returns a stable `AnalyzeResult` suitable for both human and JSON renderers.
+ *  1. Detect changed workspace packages relative to `baseRef`
+ *  2. Reconstruct historical type surfaces and compute API diffs
+ *  3. Traverse dependent packages through the workspace graph
+ *  4. Resolve impacted import and usage sites
+ *  5. Produce normalized impact reports for rendering and CI enforcement
+ *
+ * Returns a deterministic `AnalyzeResult` consumed by terminal, JSON,
+ * and CI output layers.
  */
 export async function runPipeline(
   baseRef: string,
@@ -75,8 +77,10 @@ export async function runPipeline(
 }
 
 /**
- * CLI command handler — called by cli.ts with the parsed options.
- * Runs the pipeline then dispatches to the appropriate renderer.
+ * CLI entrypoint used by `cli.ts`.
+ *
+ * Runs the analysis pipeline, renders the selected output format,
+ * then optionally applies CI enforcement rules.
  */
 export async function analyze(
   baseRef: string,
@@ -105,33 +109,15 @@ export async function analyze(
     tracker.log();
   }
 
-  // if (isCiMode(options.ci ?? false)) {
-  //   if (options.json) {
-  //     const { renderJson } = await import("../renderer/json");
-  //     renderJson(result);
-  //   }
-
-  //   runCiCheck(result!);
-  // }
-
-  // const { renderTerminal } = await import("../renderer/terminal");
-  // await renderTerminal(result!);
-
   if (options.json) {
     const { renderJson } = await import("../renderer/json");
     renderJson(result);
-
-    if (isCiMode(options.ci ?? false)) {
-      runCiCheck(result);
-    }
-
-    return;
+  } else {
+    const { renderTerminal } = await import("../renderer/terminal");
+    await renderTerminal(result);
   }
 
   if (isCiMode(options.ci ?? false)) {
     runCiCheck(result);
   }
-
-  const { renderTerminal } = await import("../renderer/terminal");
-  await renderTerminal(result);
 }

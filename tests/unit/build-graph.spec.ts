@@ -11,8 +11,8 @@ function createPkg(name: string, dependencies: string[] = []): PackageNode {
   };
 }
 
-describe("buildDependencyGraph", () => {
-  it("builds a simple reverse dependency graph", () => {
+describe("Dependency Graph Construction", () => {
+  it("builds a simple reverse adjacency map", () => {
     const packages: PackageNode[] = [createPkg("A", ["B"]), createPkg("B")];
 
     const graph = buildDependencyGraph(packages);
@@ -64,7 +64,7 @@ describe("buildDependencyGraph", () => {
     expect(graph.get("B")).toEqual(["A"]);
   });
 
-  it("handles self-dependency safely (should ignore or not duplicate)", () => {
+  it("handles self-dependency safely", () => {
     const packages: PackageNode[] = [createPkg("A", ["A"])];
 
     const graph = buildDependencyGraph(packages);
@@ -87,7 +87,7 @@ describe("buildDependencyGraph", () => {
     expect(graph.get("C")).toEqual([]);
   });
 
-  it("ensures deterministic ordering (sorted dependents)", () => {
+  it("ensures deterministic ordering", () => {
     const packages: PackageNode[] = [
       createPkg("C", ["A"]),
       createPkg("B", ["A"]),

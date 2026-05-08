@@ -6,7 +6,7 @@ function createGraph(entries: Record<string, string[]>): DependencyGraph {
   return new Map(Object.entries(entries));
 }
 
-describe("getTransitiveDependents", () => {
+describe("Transitive Dependents Traversal", () => {
   it("returns direct dependents", () => {
     const graph = createGraph({
       A: [],
@@ -56,14 +56,6 @@ describe("getTransitiveDependents", () => {
     expect(getTransitiveDependents("A", graph)).toEqual(["B", "C"]);
   });
 
-  it("returns empty array if no dependents", () => {
-    const graph = createGraph({
-      A: [],
-    });
-
-    expect(getTransitiveDependents("A", graph)).toEqual([]);
-  });
-
   it("ignores unknown package", () => {
     const graph = createGraph({
       A: ["B"],
@@ -72,7 +64,15 @@ describe("getTransitiveDependents", () => {
     expect(getTransitiveDependents("Z", graph)).toEqual([]);
   });
 
-  it("ensures deterministic output (sorted)", () => {
+  it("returns empty array if no dependents", () => {
+    const graph = createGraph({
+      A: [],
+    });
+
+    expect(getTransitiveDependents("A", graph)).toEqual([]);
+  });
+
+  it("returns dependents in deterministic order", () => {
     const graph = createGraph({
       A: [],
       B: ["A"],

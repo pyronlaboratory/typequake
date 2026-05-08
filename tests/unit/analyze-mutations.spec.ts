@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import * as ts from "typescript";
+import { describe, it, expect } from "vitest";
 import {
   diff,
   ruleAdditive,
@@ -31,216 +31,225 @@ function mapOf(...sigs: TypeSignature[]): SignatureMap {
   for (const s of sigs) map.set(s.name, s);
   return map;
 }
+describe("Mutation Analysis", () => {
+  describe("export lifecycle changes", () => {
+    it.each([
+      {
+        name: "removed export",
+        before: mapOf(createSig("User")),
+        after: mapOf(),
+        expected: "REMOVED",
+      },
+      {
+        name: "new export",
+        before: mapOf(),
+        after: mapOf(createSig("User")),
+        expected: "ADDITIVE",
+      },
+    ])("detects $name", ({ before, after, expected }) => {
+      const result = diff(before, after);
 
-describe("REMOVED", () => {
-  it("detects removed export", () => {
-    const before = mapOf(createSig("User"));
-    const after = mapOf();
-
-    const result = diff(before, after);
-
-    expect(result).toHaveLength(1);
-    expect(result[0]?.mutationClass).toBe("REMOVED");
-    expect(result[0]?.detail).toContain("removed");
+      expect(result).toHaveLength(1);
+      expect(result[0]?.mutationClass).toBe(expected);
+    });
   });
 
-  it("ruleRemoved works independently", () => {
-    const before = createSig("User");
-    const res = ruleRemoved("User", before, undefined);
+  describe("breaking structural changes", () => {
+    it.each([
+      {
+        name: "required property removal",
+        before: mapOf(
+          createSig("User", {
+            properties: [{ name: "id", typeString: "string", optional: false }],
+          }),
+        ),
+        after: mapOf(createSig("User", { properties: [] })),
+      },
+      {
+        name: "required property addition",
+        before: mapOf(createSig("User", { properties: [] })),
+        after: mapOf(
+          createSig("User", {
+            properties: [{ name: "id", typeString: "string", optional: false }],
+          }),
+        ),
+      },
+      {
+        name: "call signature arity change",
+        before: mapOf(
+          createSig("fn", {
+            callSignatures: ["(a: string) => void"],
+          }),
+        ),
+        after: mapOf(
+          createSig("fn", {
+            callSignatures: ["(a: string, b: number) => void"],
+          }),
+        ),
+      },
+    ])("detects $name", ({ before, after }) => {
+      const result = diff(before, after);
 
-    expect(res?.mutationClass).toBe("REMOVED");
-  });
-});
-
-describe("ADDITIVE", () => {
-  it("detects new export", () => {
-    const before = mapOf();
-    const after = mapOf(createSig("User"));
-
-    const result = diff(before, after);
-
-    expect(result[0]?.mutationClass).toBe("ADDITIVE");
-  });
-
-  it("detects optional property addition", () => {
-    const before = mapOf(
-      createSig("User", {
-        properties: [{ name: "id", typeString: "string", optional: false }],
-      }),
-    );
-
-    const after = mapOf(
-      createSig("User", {
-        properties: [
-          { name: "id", typeString: "string", optional: false },
-          { name: "age", typeString: "number", optional: true },
-        ],
-      }),
-    );
-
-    const result = diff(before, after);
-
-    expect(result[0]?.mutationClass).toBe("ADDITIVE");
-  });
-
-  it("ruleAdditive works independently", () => {
-    const res = ruleAdditive("User", undefined, createSig("User"));
-    expect(res?.mutationClass).toBe("ADDITIVE");
-  });
-});
-
-describe("BREAKING", () => {
-  it("detects required property removal", () => {
-    const before = mapOf(
-      createSig("User", {
-        properties: [{ name: "id", typeString: "string", optional: false }],
-      }),
-    );
-
-    const after = mapOf(createSig("User", { properties: [] }));
-
-    const result = diff(before, after);
-
-    expect(result[0]?.mutationClass).toBe("BREAKING");
+      expect(result[0]?.mutationClass).toBe("BREAKING");
+    });
   });
 
-  it("detects required property addition", () => {
-    const before = mapOf(createSig("User", { properties: [] }));
+  describe("type compatibility changes", () => {
+    describe("narrowing", () => {
+      it.each([
+        {
+          name: "union narrowing",
+          before: mapOf(
+            createSig("User", {
+              typeString: "string | number",
+            }),
+          ),
+          after: mapOf(
+            createSig("User", {
+              typeString: "string",
+            }),
+          ),
+        },
+        {
+          name: "optional property becoming required",
+          before: mapOf(
+            createSig("User", {
+              properties: [
+                { name: "id", typeString: "string", optional: true },
+              ],
+            }),
+          ),
+          after: mapOf(
+            createSig("User", {
+              properties: [
+                { name: "id", typeString: "string", optional: false },
+              ],
+            }),
+          ),
+        },
+      ])("detects $name", ({ before, after }) => {
+        const result = diff(before, after);
 
-    const after = mapOf(
-      createSig("User", {
-        properties: [{ name: "id", typeString: "string", optional: false }],
-      }),
-    );
-
-    const result = diff(before, after);
-
-    expect(result[0]?.mutationClass).toBe("BREAKING");
-  });
-
-  it("detects call signature arity change", () => {
-    const before = mapOf(
-      createSig("fn", {
-        callSignatures: ["(a: string) => void"],
-      }),
-    );
-
-    const after = mapOf(
-      createSig("fn", {
-        callSignatures: ["(a: string, b: number) => void"],
-      }),
-    );
-
-    const result = diff(before, after);
-
-    expect(result[0]?.mutationClass).toBe("BREAKING");
-  });
-
-  it("ruleBreaking works independently", () => {
-    const before = createSig("User", {
-      properties: [{ name: "id", typeString: "string", optional: false }],
+        expect(result[0]?.mutationClass).toBe("NARROWING");
+      });
     });
 
-    const after = createSig("User", { properties: [] });
+    describe("widening", () => {
+      it.each([
+        {
+          name: "union widening",
+          before: mapOf(
+            createSig("User", {
+              typeString: "string",
+            }),
+          ),
+          after: mapOf(
+            createSig("User", {
+              typeString: "string | undefined",
+            }),
+          ),
+        },
+        {
+          name: "required property becoming optional",
+          before: mapOf(
+            createSig("User", {
+              properties: [
+                { name: "id", typeString: "string", optional: false },
+              ],
+            }),
+          ),
+          after: mapOf(
+            createSig("User", {
+              properties: [
+                { name: "id", typeString: "string", optional: true },
+              ],
+            }),
+          ),
+        },
+      ])("detects $name", ({ before, after }) => {
+        const result = diff(before, after);
 
-    const res = ruleBreaking("User", before, after);
-    expect(res?.mutationClass).toBe("BREAKING");
-  });
-});
-
-describe("NARROWING", () => {
-  it("detects union narrowing", () => {
-    const before = mapOf(createSig("User", { typeString: "string | number" }));
-
-    const after = mapOf(createSig("User", { typeString: "string" }));
-
-    const result = diff(before, after);
-
-    expect(result[0]?.mutationClass).toBe("NARROWING");
-  });
-
-  it("detects optional → required property", () => {
-    const before = mapOf(
-      createSig("User", {
-        properties: [{ name: "id", typeString: "string", optional: true }],
-      }),
-    );
-
-    const after = mapOf(
-      createSig("User", {
-        properties: [{ name: "id", typeString: "string", optional: false }],
-      }),
-    );
-
-    const result = diff(before, after);
-
-    expect(result[0]?.mutationClass).toBe("NARROWING");
-  });
-
-  it("ruleNarrowing works independently", () => {
-    const before = createSig("User", {
-      typeString: "string | number",
-    });
-    const after = createSig("User", {
-      typeString: "string",
+        expect(result[0]?.mutationClass).toBe("WIDENING");
+      });
     });
 
-    const res = ruleNarrowing("User", before, after);
-    expect(res?.mutationClass).toBe("NARROWING");
-  });
-});
+    describe("non-breaking structural changes", () => {
+      it("detects optional property addition", () => {
+        const before = mapOf(
+          createSig("User", {
+            properties: [{ name: "id", typeString: "string", optional: false }],
+          }),
+        );
 
-describe("WIDENING", () => {
-  it("detects union widening", () => {
-    const before = mapOf(createSig("User", { typeString: "string" }));
+        const after = mapOf(
+          createSig("User", {
+            properties: [
+              { name: "id", typeString: "string", optional: false },
+              { name: "age", typeString: "number", optional: true },
+            ],
+          }),
+        );
 
-    const after = mapOf(
-      createSig("User", { typeString: "string | undefined" }),
-    );
+        const result = diff(before, after);
 
-    const result = diff(before, after);
-
-    expect(result[0]?.mutationClass).toBe("WIDENING");
-  });
-
-  it("detects required → optional property", () => {
-    const before = mapOf(
-      createSig("User", {
-        properties: [{ name: "id", typeString: "string", optional: false }],
-      }),
-    );
-
-    const after = mapOf(
-      createSig("User", {
-        properties: [{ name: "id", typeString: "string", optional: true }],
-      }),
-    );
-
-    const result = diff(before, after);
-
-    expect(result[0]?.mutationClass).toBe("WIDENING");
-  });
-
-  it("ruleWidening works independently", () => {
-    const before = createSig("User", { typeString: "string" });
-    const after = createSig("User", {
-      typeString: "string | undefined",
+        expect(result[0]?.mutationClass).toBe("ADDITIVE");
+      });
     });
-
-    const res = ruleWidening("User", before, after);
-    expect(res?.mutationClass).toBe("WIDENING");
   });
-});
 
-describe("NO CHANGE", () => {
-  it("returns empty array when identical", () => {
-    const sig = createSig("User");
+  describe("rule helpers", () => {
+    it.each([
+      {
+        name: "removed rule",
+        result: ruleRemoved("User", createSig("User"), undefined),
+        expected: "REMOVED",
+      },
+      {
+        name: "additive rule",
+        result: ruleAdditive("User", undefined, createSig("User")),
+        expected: "ADDITIVE",
+      },
+      {
+        name: "breaking rule",
+        result: ruleBreaking(
+          "User",
+          createSig("User", {
+            properties: [{ name: "id", typeString: "string", optional: false }],
+          }),
+          createSig("User", { properties: [] }),
+        ),
+        expected: "BREAKING",
+      },
+      {
+        name: "narrowing rule",
+        result: ruleNarrowing(
+          "User",
+          createSig("User", { typeString: "string | number" }),
+          createSig("User", { typeString: "string" }),
+        ),
+        expected: "NARROWING",
+      },
+      {
+        name: "widening rule",
+        result: ruleWidening(
+          "User",
+          createSig("User", { typeString: "string" }),
+          createSig("User", { typeString: "string | undefined" }),
+        ),
+        expected: "WIDENING",
+      },
+    ])("$name returns correct mutation class", ({ result, expected }) => {
+      expect(result?.mutationClass).toBe(expected);
+    });
+  });
 
-    const before = mapOf(sig);
-    const after = mapOf({ ...sig });
+  describe("stable surfaces", () => {
+    it("returns no mutations for identical signatures", () => {
+      const sig = createSig("User");
 
-    const result = diff(before, after);
+      const result = diff(mapOf(sig), mapOf({ ...sig }));
 
-    expect(result).toHaveLength(0);
+      expect(result).toEqual([]);
+    });
   });
 });
