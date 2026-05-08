@@ -8,8 +8,6 @@ import type {
   TypeMutationClass,
 } from "../types/index";
 
-// ── Severity config ───────────────────────────────────────────────────────────
-
 const SEVERITY_ORDER: TypeMutationClass[] = [
   "BREAKING",
   "REMOVED",
@@ -28,13 +26,10 @@ const SEVERITY_COLOR: Record<TypeMutationClass, InkColor> = {
   ADDITIVE: "green",
 };
 
-// ── OSC 8 clickable hyperlinks ────────────────────────────────────────────────
-
+// OSC 8 clickable hyperlinks
 function fileLink(absolutePath: string, label: string): string {
   return `\x1b]8;;file://${absolutePath}\x07${label}\x1b]8;;\x07`;
 }
-
-// ── Sub-components ────────────────────────────────────────────────────────────
 
 function SiteRow({ site }: { site: ImportSite }) {
   const abs = path.resolve(site.filePath);
@@ -177,8 +172,6 @@ function SummaryLine({ result }: { result: AnalyzeResult }) {
   );
 }
 
-// ── Root component ────────────────────────────────────────────────────────────
-
 function Report({ result }: { result: AnalyzeResult }) {
   const byPackage = new Map<string, ImpactReport[]>();
   for (const r of result.reports) {
@@ -209,8 +202,6 @@ function Report({ result }: { result: AnalyzeResult }) {
     </Box>
   );
 }
-
-// ── Public API ────────────────────────────────────────────────────────────────
 
 export async function renderTerminal(result: AnalyzeResult): Promise<void> {
   const { unmount, waitUntilExit } = render(<Report result={result} />, {

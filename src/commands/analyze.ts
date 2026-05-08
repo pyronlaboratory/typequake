@@ -31,14 +31,23 @@ export async function runPipeline(
   rootDir: string = process.cwd(),
   options: AnalyzeOptions = {},
 ): Promise<AnalyzeResult> {
+  const log = options.verbose
+    ? (msg: string) => process.stderr.write(`[typequake] ${msg}\n`)
+    : (_msg: string) => {};
+
   const bridge = new GitBridge(rootDir);
 
+  log(`comparing working tree against base ref: ${baseRef}`);
   const changedPackageNames = bridge.getChangedPackages(baseRef);
 
   if (changedPackageNames.length === 0) {
+    log("no changed packages detected");
     return { baseRef, diffs: [], reports: [] };
   }
 
+  log(
+    `changed package${changedPackageNames.length !== 1 ? "s" : ""} (${changedPackageNames.length}): ${changedPackageNames.join(", ")}`,
+  );
   const { packages, graph } = bridge["scanner"].analyzeWorkspace();
 
   const workspaceGraph = { graph, packages };
@@ -49,8 +58,12 @@ export async function runPipeline(
     const pkgNode = packages.find((p) => p.name === pkgName);
     if (!pkgNode) continue;
 
+    log(`diffing ${pkgName}`);
     const result = bridge.diffPackage(baseRef, pkgNode.path, options);
     diffs.push(result);
+    log(
+      `  → status: ${result.status}, mutations: ${result.mutations.length}${result.mutations.length > 0 ? ` (${[...new Set(result.mutations.map((m) => m.mutationClass))].join(", ")})` : ""}`,
+    );
   }
 
   const reportArrays = await Promise.all(
@@ -73,6 +86,9 @@ export async function runPipeline(
     return sd !== 0 ? sd : a.consumerPackage.localeCompare(b.consumerPackage);
   });
 
+  log(
+    `impact reports: ${reports.length} across ${new Set(reports.map((r) => r.consumerPackage)).size} consumer package(s)`,
+  );
   return { baseRef, diffs, reports };
 }
 
@@ -105,7 +121,7 @@ export async function analyze(
     }
   }
 
-  if (options.verbose && options.timing) {
+  if (options.timing) {
     tracker.log();
   }
 
