@@ -1,0 +1,110 @@
+<!-- <svg width="680" height="200" viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    /* This makes the text invert based on the background color */
+    .adaptive-text {
+      mix-blend-mode: difference;
+    }
+  </style>
+  
+  <title>typequake logo</title>
+  <defs>
+    <clipPath id="iconClip">
+      <rect x="175" y="48" width="90" height="90" rx="22"/>
+    </clipPath>
+  </defs>
+
+  <rect x="175" y="48" width="90" height="90" rx="22" fill="#F97316"/>
+
+  <g clip-path="url(#iconClip)">
+    <line x1="178" y1="93" x2="192" y2="93" stroke="rgba(255,255,255,0.4)" stroke-width="2.2" stroke-linecap="round"/>
+    <polyline
+      points="192,93 195,89 198,97 202,93 206,60 212,126 217,93 220,85 223,101 226,89 229,97 232,93 236,95 239,93"
+      fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="239" y1="93" x2="262" y2="93" stroke="rgba(255,255,255,0.4)" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+
+  <text x="281" y="107" font-family="'Helvetica Neue', Arial, sans-serif"
+    font-size="46" font-weight="700" letter-spacing="0.5">
+
+    <tspan fill="white" class="adaptive-text">type</tspan>
+    <tspan fill="#F97316" transform="translate(500, 100)">quake</tspan>
+  </text>
+
+  <text x="283" y="131" font-family="'Helvetica Neue', Arial, sans-serif"
+    font-size="11" font-weight="500" letter-spacing="1" transform="translate(0, 5)" fill="#9CA3AF">TYPE IMPACT ANALYSIS</text>
+</svg> -->
+
+
+<!-- <svg width="380" height="200" viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .adaptive-text {
+      mix-blend-mode: difference;
+    }
+  </style>
+
+  <defs>
+  <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FB923C" />
+      <stop offset="100%" style="stop-color:#EA580C" />
+    </linearGradient>
+
+    <clipPath id="iconClip">
+      <rect x="175" y="48" width="90" height="90" rx="22"/>
+    </clipPath>
+  </defs>
+
+  <rect x="175" y="48" width="90" height="90" rx="22" fill="url(#brandGradient)"/>
+  <g clip-path="url(#iconClip)">
+    <line x1="178" y1="93" x2="192" y2="93" stroke="rgba(255,255,255,0.6)" stroke-width="2.2" stroke-linecap="round"/>
+    <polyline
+      points="192,93 195,89 198,97 202,93 206,60 212,126 217,93 220,85 223,101 226,89 229,97 232,93 236,95 239,93"
+      fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="239" y1="93" x2="262" y2="93" stroke="rgba(255,255,255,0.4)" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+
+  <text x="281" y="107" font-family="'Helvetica Neue', Arial, sans-serif"
+    font-size="46" letter-spacing="-0.5">
+    <tspan fill="white" class="adaptive-text" font-weight="400">type</tspan><tspan fill="#EA580C" dx="3.5" letter-spacing="0.5" font-weight="600">quake</tspan>
+  </text>
+
+  <text x="282" y="131" font-family="monospace" font-size="12" font-weight="400" 
+        letter-spacing="1" transform="translate(0, 5)" fill="#6B7280">
+    TYPE IMPACT ANALYSIS
+  </text>
+</svg> -->
+
+<svg width="350" height="110" viewBox="0 0 350 110" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .adaptive-text { mix-blend-mode: difference; }
+  </style>
+
+  <defs>
+    <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FB923C" />
+      <stop offset="100%" style="stop-color:#EA580C" />
+    </linearGradient>
+
+    <clipPath id="iconClip">
+      <rect x="0" y="10" width="90" height="90" rx="22"/>
+    </clipPath>
+  </defs>
+
+  <rect x="0" y="10" width="90" height="90" rx="22" fill="url(#brandGradient)"/>
+  <g clip-path="url(#iconClip)">
+    <line x1="3" y1="55" x2="17" y2="55" stroke="rgba(255,255,255,0.6)" stroke-width="2.2" stroke-linecap="round"/>
+    <polyline
+      points="17,55 20,51 23,59 27,55 31,22 37,88 42,55 45,47 48,63 51,51 54,59 57,55 61,57 64,55"
+      fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="64" y1="55" x2="87" y2="55" stroke="rgba(255,255,255,0.4)" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+
+  <text x="106" y="69" font-family="'Helvetica Neue', Arial, sans-serif" font-size="46" letter-spacing="-0.5" transform="translate(0, -5)">
+    <tspan fill="white" class="adaptive-text" font-weight="400">type</tspan><tspan fill="#EA580C" dx="3.5" letter-spacing="0.5" font-weight="600">quake</tspan>
+  </text>
+
+  <text x="107" y="93" transform="translate(0, 6)" font-family="monospace" font-size="12" font-weight="400" letter-spacing="1" fill="#6B7280">
+    TYPE IMPACT ANALYSIS
+  </text>
+</svg>
+
+

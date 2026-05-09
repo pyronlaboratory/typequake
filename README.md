@@ -1,8 +1,7 @@
-# typequake
+## <img src="./logo.svg" width="250">
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![NPM Version](https://img.shields.io/npm/v/typequake)
-![Alt text](./typequake_logo.svg)
 
 **typequake** is a static analysis tool for TypeScript monorepos that traces the downstream impact of type changes to every affected import site across your workspace.
 
@@ -11,18 +10,18 @@ Given a base git ref, it reconstructs historical type signatures, classifies str
 ```
 $ npx typequake HEAD~1
 
-IMPACT REPORT                                                                                               ref HEAD~1
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+IMPACT REPORT                                                                  ref HEAD~1
+─────────────────────────────────────────────────────────────────────────────────────────
 📦 @super-goggles/app | 5 mutations
 
 BREAKING  (1)
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+─────────────────────────────────────────────────────────────────────────────────────────
   User                  required property 'account_id' removed from User
     ↳ packages/app/index.ts:3:3
 
 
 ADDITIVE  (4)
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+─────────────────────────────────────────────────────────────────────────────────────────
   Status                new export 'Status' added
     ↳ packages/app/index.ts:2:3
 
@@ -35,7 +34,7 @@ ADDITIVE  (4)
   Session               new export 'Session' added
     ↳ packages/app/index.ts:6:3
 
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+─────────────────────────────────────────────────────────────────────────────────────────
 Summary  1 breaking  4 additive  across 1 package
 
 ```
@@ -340,3 +339,9 @@ npx typequake main --json
 ```bash
 npx typequake main --json --timing 2>timing.log | jq '.summary'
 ```
+
+## Support
+
+If you find this project or its underlying library useful, please consider supporting its development and leaving a star if you appreciate the work.
+
+<a href='https://ko-fi.com/F1F1VEXA' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi5.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>

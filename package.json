@@ -1,6 +1,6 @@
 {
   "name": "typequake",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "module": "index.ts",
   "type": "module",
   "bin": {
@@ -41,8 +41,19 @@
   },
   "files": [
     "dist/",
+    "logo.svg",
     "LICENSE",
     "README.md",
     "CHANGELOG.md"
+  ],
+  "keywords": [
+    "typequake",
+    "typescript",
+    "monorepo",
+    "impact-analysis",
+    "static-analysis",
+    "semantic-analysis",
+    "dx",
+    "tooling"
   ]
 }
