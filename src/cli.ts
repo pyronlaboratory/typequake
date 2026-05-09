@@ -28,7 +28,7 @@ program.configureHelp({
 program
   .name("typequake")
   .description("Semantic analysis of type changes and their downstream impact")
-  .version("1.0.0", "-v, --version")
+  .version("1.0.1", "-v, --version")
   .addHelpText(
     "after",
     `
