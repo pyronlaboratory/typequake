@@ -1,11 +1,10 @@
 {
   "name": "typequake",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "module": "index.ts",
   "type": "module",
-  "private": true,
   "bin": {
-    "typequake": "./dist/cli.js"
+    "typequake": "dist/cli.js"
   },
   "scripts": {
     "start:dev": "bun run src/cli.ts",
@@ -39,5 +38,11 @@
   },
   "overrides": {
     "vite": "^8.0.5"
-  }
+  },
+  "files": [
+    "dist/",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ]
 }

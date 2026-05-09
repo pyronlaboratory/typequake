@@ -144,5 +144,6 @@ vite.config.ts.timestamp-*
 typequake
 ./typequake
 
-# Fixtures
+# Tests and Fixtures
+tests/unit/__snapshots__/*
 tests/fixtures/*

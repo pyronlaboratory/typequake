@@ -14,20 +14,31 @@ function validateRef(value: string): string {
   return value.trim();
 }
 
+const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+
 const program = new Command();
+
+program.configureHelp({
+  styleOptionDescription: capitalize,
+  styleCommandDescription: capitalize,
+  styleArgumentDescription: capitalize,
+  styleDescriptionText: capitalize,
+});
 
 program
   .name("typequake")
   .description("Semantic analysis of type changes and their downstream impact")
-  .version("1.0.0", "-v, --version")
+  .version("1.0.1", "-v, --version")
   .addHelpText(
     "after",
     `
 Examples:
-  $ typequake main
-  $ typequake HEAD~1 --json
-  $ typequake origin/main --ci
-  $ typequake install-hook
+  $ <runner> typequake main
+  $ <runner> typequake HEAD~1 --json
+  $ <runner> typequake origin/main --ci
+  $ <runner> typequake install-hook
+
+(Note: <runner> can be npx, bunx, or pnpx)
 `,
   );
 
@@ -50,11 +61,28 @@ program
 program
   .command("install-hook")
   .description("Install the pre-push git hook for CI enforcement")
+  .addHelpText(
+    "after",
+    `
+Details:
+  This command creates a '.git/hooks/pre-push' script in your repository.
+  The hook automatically runs 'typequake' against your upstream branch 
+  (falling back to HEAD~1) before every push.
+
+Conflict Resolution:
+  - If no hook exists, it creates one.
+  - If a typequake-managed hook exists, it updates it.
+  - If a custom hook exists, it will abort to prevent overwriting your work.
+
+To Uninstall:
+  Simply delete '.git/hooks/pre-push' or remove the typequake execution line.
+    `,
+  )
   .action(async () => {
     await installHook();
   });
 
-program.showHelpAfterError("(run typequake --help for usage)");
+program.showHelpAfterError("(run npx typequake --help for usage)");
 program.configureOutput({ writeErr: (str) => process.stderr.write(str) });
 
 if (!process.argv.slice(2).length) {

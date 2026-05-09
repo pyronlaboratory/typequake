@@ -12,7 +12,7 @@ function ghaError(report: ImpactReport): void {
   // Emit one ::error annotation per site so GHA links back to the exact file/line.
   if (report.sites.length === 0) {
     process.stderr.write(
-      `::error title=typequake [${report.mutationClass}]::${report.detail} — consumed by ${report.consumerPackage}\n`,
+      `::error title=typequake [${report.mutationClass}]::${report.detail} → consumed by ${report.consumerPackage}\n`,
     );
     return;
   }
@@ -27,7 +27,7 @@ function ghaError(report: ImpactReport): void {
 function ghaWarning(report: ImpactReport): void {
   if (report.sites.length === 0) {
     process.stderr.write(
-      `::warning title=typequake [${report.mutationClass}]::${report.detail} — consumed by ${report.consumerPackage}\n`,
+      `::warning title=typequake [${report.mutationClass}]::${report.detail} → consumed by ${report.consumerPackage}\n`,
     );
     return;
   }

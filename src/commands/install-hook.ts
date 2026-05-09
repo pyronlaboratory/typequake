@@ -3,7 +3,7 @@ import { join } from "path";
 
 const HOOK_SCRIPT = `#!/bin/sh
 # Managed by typequake. Please do not remove this file or header.
-typequake $(git rev-parse --abbrev-ref HEAD@{upstream} 2>/dev/null || echo "HEAD~1")
+npx typequake $(git rev-parse --abbrev-ref HEAD@{upstream} 2>/dev/null || echo "HEAD~1")
 `;
 
 const HOOK_MARKER = "# Installed by typequake";
