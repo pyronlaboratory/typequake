@@ -7,6 +7,21 @@ typequake adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.0.2] - 2026-05-10
+
+Maintenance Release
+
+### Added
+
+- **New Branding**: Introduced a refined `logo.svg` and updated the project identity across README and documentation.
+- **Support**: Added a Ko-fi support link to the README.
+- **NPM Metadata**: Enhanced `package.json` with relevant keywords for better discoverability.
+- **Documentation**: Initial setup for GitHub Pages using the Jekyll `modernist` theme.
+
+### Updated
+
+- **Enhanced Release Workflow**: GitHub Release notes now automatically include a list of contributors and a link to the full changelog/diff between versions.
+
 ## [1.0.1] - 2025-05-09
 
 Maintenance Release
@@ -69,5 +84,6 @@ Initial public release.
 - `PerformanceTracker` utility wraps synchronous and async pipeline stages, accumulating time per metric name (`extraction`, `diff`, `traversal`, `total`).
 - TypeScript `ts.Program` instances are cached per entry point within a run to avoid redundant parsing across multiple consumer packages.
 
+[1.0.2]: https://github.com/pyronlaboratory/typequake/releases/tag/v1.0.2
 [1.0.1]: https://github.com/pyronlaboratory/typequake/releases/tag/v1.0.1
 [1.0.0]: https://github.com/pyronlaboratory/typequake/releases/tag/v1.0.0

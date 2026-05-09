@@ -1,4 +1,4 @@
-## <img src="./logo.svg" width="250">
+## <img src="https://raw.githubusercontent.com/pyronlaboratory/typequake/refs/heads/main/logo.svg" width="250">
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![NPM Version](https://img.shields.io/npm/v/typequake)
