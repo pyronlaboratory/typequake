@@ -43,10 +43,28 @@ jobs:
         id: changelog
         run: |
           VERSION=${GITHUB_REF_NAME#v}
+
           NOTES=$(awk "/^## \[?${VERSION}\]?/{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md)
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+
+          PREV_TAG=$(git describe --tags --abbrev=0 ${GITHUB_REF_NAME}^ 2>/dev/null || echo "")
+
+          if [ -n "$PREV_TAG" ]; then
+            CONTRIBUTORS=$(git log ${PREV_TAG}..${GITHUB_REF_NAME} --pretty=format:"* @%an" | sort -u)
+            DIFF_URL="${{ github.server_url }}/${{ github.repository }}/compare/${PREV_TAG}...${GITHUB_REF_NAME}"
+          else
+            CONTRIBUTORS=$(git log --pretty=format:"* @%an" | sort -u)
+            DIFF_URL="${{ github.server_url }}/${{ github.repository }}/tree/${GITHUB_REF_NAME}"
+          fi
+
+          {
+            echo "notes<<EOF"
+            echo "$NOTES"
+            echo -e "\n## Contributors"
+            echo "$CONTRIBUTORS"
+            echo -e "\n## Full Changelog"
+            echo "[$PREV_TAG...$GITHUB_REF_NAME]($DIFF_URL)"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
